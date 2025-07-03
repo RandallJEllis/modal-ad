@@ -222,10 +222,11 @@ def alzheimers_cases_only(X, y):
     return X, y
 
 
-def load_datasets(data_modality, data_instance, alzheimers_only=False):
+def load_datasets(data_path, data_modality, data_instance, alzheimers_only=False):
     """
     Load datasets for a given data modality.
     Parameters:
+    data_path (str): The path to the dataset directory.
     data_modality (str): The modality of the data to load. Can be 'neuroimaging' or other modalities.
     Returns:
     tuple: A tuple containing:
@@ -235,7 +236,7 @@ def load_datasets(data_modality, data_instance, alzheimers_only=False):
         - region_indices (list or None): Region indices for cross-validation if the modality is not 'neuroimaging', otherwise None.
     """
 
-    data_path = f"../tidy_data/UKBiobank/dementia/{data_modality}"
+
     X = pd.read_parquet(f"{data_path}/X.parquet")
     y = np.load(f"{data_path}/y.npy")
 
@@ -1163,7 +1164,8 @@ def main():
     )
 
     # Load the datasets
-    X, y, region_indices = load_datasets(data_modality, data_instance, alzheimers_only)
+    data_path = f"../tidy_data/UKBiobank/dementia/{data_modality}"
+    X, y, region_indices = load_datasets(data_path, data_modality, data_instance, alzheimers_only)
 
     directory_path, original_results_directory_path = get_dir_path(
         data_modality, experiment, metric, model, alzheimers_only
