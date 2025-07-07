@@ -23,6 +23,7 @@ import pickle
 
 from pyarrow.parquet import ParquetFile
 import pyarrow as pa
+from pathlib import Path
 
 """
 Machine learning experiments for:
@@ -156,7 +157,10 @@ def update_region_indices(X, data_instance):
     Returns:
         pd.GroupBy: A grouped dataframe containing the updated region indices.
     """
-    region_lookup = pd.read_csv("../metadata/coding10.tsv", sep="\t")
+
+     # Get the directory where THIS script (module) lives
+    module_dir = Path(__file__).resolve().parent
+    region_lookup = pd.read_csv(module_dir / "../../metadata/coding10.tsv", sep="\t")
     region_indices = ukb_utils.group_assessment_center(X, data_instance, region_lookup)
     return region_indices
 
@@ -172,10 +176,13 @@ def alzheimers_cases_only(X, y):
         - X_new (pd.DataFrame): The filtered features dataframe with only Alzheimer's cases and controls.
         - y_new (np.ndarray): The filtered target array with only Alzheimer's cases and controls.
     """
-    data_path = "../../proj_idp/tidy_data/"
+
+    # Get the directory where THIS script (module) lives
+    module_dir = Path(__file__).resolve().parent
+    data_path = module_dir / "../../proj_idp/tidy_data/"
 
     # the allcausedementia file is large, so we will import the first row to get the columns we need
-    pf = ParquetFile(data_path + "acd/allcausedementia.parquet")
+    pf = ParquetFile(data_path / "acd/allcausedementia.parquet")
     first_rows = next(pf.iter_batches(batch_size=2))
     acd = pa.Table.from_batches([first_rows]).to_pandas()
     acd = df_utils.pull_columns_by_prefix(
@@ -222,11 +229,10 @@ def alzheimers_cases_only(X, y):
     return X, y
 
 
-def load_datasets(data_path, data_modality, data_instance, alzheimers_only=False):
+def load_datasets(data_modality, data_instance, alzheimers_only=False):
     """
     Load datasets for a given data modality.
     Parameters:
-    data_path (str): The path to the dataset directory.
     data_modality (str): The modality of the data to load. Can be 'neuroimaging' or other modalities.
     Returns:
     tuple: A tuple containing:
@@ -236,6 +242,9 @@ def load_datasets(data_path, data_modality, data_instance, alzheimers_only=False
         - region_indices (list or None): Region indices for cross-validation if the modality is not 'neuroimaging', otherwise None.
     """
 
+    # Get the directory where THIS script (module) lives
+    module_dir = Path(__file__).resolve().parent
+    data_path = module_dir / f"../../tidy_data/UKBiobank/dementia/{data_modality}"
 
     X = pd.read_parquet(f"{data_path}/X.parquet")
     y = np.load(f"{data_path}/y.npy")
@@ -410,7 +419,10 @@ def _get_experiment_vars(data_instance, X, lancet_vars):
             - 'demographics_modality_lancet2024': Dictionary with keys as modalities and values as lists of columns combining demographics, modality-specific columns, and additional variables from the Lancet 2024 study.
     """
 
-    data_path = f"../tidy_data/UKBiobank/dementia/"
+    # Get the directory where THIS script (module) lives
+    module_dir = Path(__file__).resolve().parent
+    data_path = module_dir / f"../../tidy_data/UKBiobank/dementia/"
+
     experiment_vars = {
         "age_only": [f"21003-{data_instance}.0"],
         "all_demographics": df_utils.pull_columns_by_prefix(
@@ -670,7 +682,10 @@ def continuous_vars_for_scaling(
           for the specified configurations.
     """
 
-    data_path = f"../tidy_data/UKBiobank/dementia/{data_modality}"
+    # Get the directory where THIS script (module) lives
+    module_dir = Path(__file__).resolve().parent
+    data_path = module_dir / f"../tidy_data/UKBiobank/dementia/{data_modality}"
+    
     continuous_cols = {
         "age_only": [f"21003-{data_instance}.0"],
         "all_demographics": df_utils.pull_columns_by_prefix(
@@ -1164,8 +1179,7 @@ def main():
     )
 
     # Load the datasets
-    data_path = f"../tidy_data/UKBiobank/dementia/{data_modality}"
-    X, y, region_indices = load_datasets(data_path, data_modality, data_instance, alzheimers_only)
+    X, y, region_indices = load_datasets(data_modality, data_instance, alzheimers_only)
 
     directory_path, original_results_directory_path = get_dir_path(
         data_modality, experiment, metric, model, alzheimers_only
