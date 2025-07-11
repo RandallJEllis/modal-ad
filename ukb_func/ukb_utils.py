@@ -1,5 +1,6 @@
 import pandas as pd
 import os
+from pathlib import Path
 
 def _list_directories(directory):
     return [d for d in os.listdir(directory) if os.path.isdir(os.path.join(directory, d))]
@@ -104,9 +105,23 @@ def binary_encode_column_membership_datacoding2171(df, field_id_columns, new_col
     return df
 
 
-def get_protein_lookup(protein_lookup_path):
-    protein_code = pd.read_csv(protein_lookup_path, sep='\t')
-    
+def get_protein_lookup():
+    """ Load the protein lookup table from the coding143.tsv file.
+    This file contains the mapping of protein IDs to their meanings, which may include multiple parts separated by semicolons.
+    Returns:
+        pd.DataFrame: A DataFrame containing the protein codes and their meanings, with the meanings split into separate columns.
+    """
+    # Load the coding143.tsv file from the metadata directory
+    # Assuming the file is located two directories up from the current file's directory
+    # Adjust the path as necessary based on your project structure
+    # Use Path to ensure compatibility across different operating systems
+    # Note: This assumes the file is located at ../../metadata/coding143.tsv relative to this script's location
+
+    # Get the directory of the current file
+    # and construct the path to the coding143.tsv file    
+    module_dir = Path(__file__).resolve().parent
+    protein_code = pd.read_csv(f'{module_dir}/../../metadata/coding143.tsv', sep='\t')
+
     # Split the column by semicolon and expand into separate columns
     split_columns = protein_code['meaning'].str.split(';', expand=True)
 
@@ -118,21 +133,5 @@ def get_protein_lookup(protein_lookup_path):
 
     # Drop the original column if no longer needed
     protein_code = protein_code.drop('meaning', axis=1)
-
-    # ticks = []
-
-    # for f in top_feature_names[:20]:
-    #     if f[-2:] == '-0':
-    #         hyphen_idx = f.index('-')
-    #         prot_id = f[:hyphen_idx]
-    #         sym = protein_code.loc[protein_code.coding == int(prot_id), 'part_1'].values[0]
-            
-    #         ticks.append(sym)
-    #     elif '21003' in f:
-    #         ticks.append('Age')
-    #     elif 'apoe_' in f:
-    #         allele_num = f[-3]
-    #         ticks.append(f'APOE$\epsilon$4, {allele_num} alleles')
-    #     else:
-    #         ticks.append(f)
+    
     return protein_code    
