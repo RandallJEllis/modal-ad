@@ -158,7 +158,7 @@ def update_region_indices(X, data_instance):
         pd.GroupBy: A grouped dataframe containing the updated region indices.
     """
 
-     # Get the directory where THIS script (module) lives
+    # Get the directory where THIS script (module) lives
     module_dir = Path(__file__).resolve().parent
     region_lookup = pd.read_csv(module_dir / "../../metadata/coding10.tsv", sep="\t")
     region_indices = ukb_utils.group_assessment_center(X, data_instance, region_lookup)
@@ -179,7 +179,7 @@ def alzheimers_cases_only(X, y):
 
     # Get the directory where THIS script (module) lives
     module_dir = Path(__file__).resolve().parent
-    data_path = module_dir / "../../proj_idp/tidy_data/"
+    data_path = module_dir / "../../../proj_idp/tidy_data/"
 
     # the allcausedementia file is large, so we will import the first row to get the columns we need
     pf = ParquetFile(data_path / "acd/allcausedementia.parquet")
@@ -212,7 +212,7 @@ def alzheimers_cases_only(X, y):
     cols_import = acd.columns.tolist()
 
     acd = pd.read_parquet(
-        data_path + "acd/allcausedementia.parquet", columns=cols_import
+        data_path / "acd/allcausedementia.parquet", columns=cols_import
     )
     acd = acd[acd.eid.isin(X.eid)]
 

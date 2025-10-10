@@ -16,6 +16,8 @@ setwd(dirname(this.path()))
 source("../A4/cdr/plot_figures.R")
 source("../A4/cdr/metrics.R")
 
+AGE_CUTOFF <- 65
+
 # tmerge data for all models
 format_df <- function(df, #ptau = FALSE, lancet = FALSE, pet = FALSE,
                       medhist, neuroexm, adni_nightingale, modhach, 
@@ -476,7 +478,6 @@ format_df <- function(df, #ptau = FALSE, lancet = FALSE, pet = FALSE,
   print(mean_lancet_vars)
   print(sd_lancet_vars)
 
-  #### TODO: BUG HERE: Error in scale.default(td_data[, continuous_lancet_vars], center = mean_lancet_vars,  : 
   # length of 'center' must equal the number of columns of 'x'
   td_data[, continuous_lancet_vars] <- scale(
     td_data[, continuous_lancet_vars],
@@ -594,6 +595,18 @@ eval_times <- seq(2, 7)
 for (outcome in c("allcausedementia", "alzheimers")) {  
 # for (amyloid_positive_only in c(TRUE, FALSE)) {
   load_path = paste0("../../tidy_data/ADNI/", outcome, "_outcome/")
+  if (!is.null(AGE_CUTOFF)) {
+    load_path <- paste0(load_path, "age_", AGE_CUTOFF, "/")
+    # save_path <- paste0(load_path, "age_", AGE_CUTOFF, "/")
+    # dir.create(save_path, showWarnings = FALSE, recursive = TRUE)
+    print(paste0("Using age cutoff of ", AGE_CUTOFF))
+    } #else {
+    # save_path <- load_path
+  # }
+
+  print(paste0("Loading data from ", load_path))
+
+
 
   # if (amyloid_positive_only) {
   #   load_path = paste0(load_path, "amyloid_positive/")
@@ -702,6 +715,12 @@ for (outcome in c("allcausedementia", "alzheimers")) {
     val_df_raw <- read_parquet(paste0(
       load_path, "val_", fold, ".parquet"
     ))
+
+    # # if AGE_CUTOFF is set, filter to only those with age >= AGE_CUTOFF
+    # if (!is.null(AGE_CUTOFF)) {
+    #     train_df_raw <- train_df_raw[train_df_raw$age >= AGE_CUTOFF,]
+    #     val_df_raw <- val_df_raw[val_df_raw$age >= AGE_CUTOFF,]
+    # }
 
     lancet_cols_to_keep <- c()
     for (col in raw_lancet_cols) {

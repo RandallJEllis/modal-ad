@@ -113,9 +113,31 @@ def remove_pre_instance_dementia(df, instance, dementia_df):
 
     return df
 
+def get_labels(df, instance, dementia_df, remove_pre_instance=False):
+    """
+    Get labels for dementia cases in the dataframe.
+    df: dataframe with Field IDs related to date of ICD code
+    dementia_df: dataframe with dementia data
+    """
+    if remove_pre_instance:
+        df = remove_pre_instance_dementia(df, instance, dementia_df)
+
+    both_eid, date_df, exclude_df = pull_dementia_cases(dementia_df)
+
+    # remove patients diagnosed with dementia before instance time
+    df = df.merge(date_df, on="eid", how="left")
+    df["label"] = df["eid"].isin(both_eid).astype(int)
+
+    # build controls and cases
+    controls = df[~df.eid.isin(exclude_df.eid)]
+    cases = df[df.label == 1]
+
+    return pd.concat([controls, cases])
 
 def apoe_alleles(df, alleles, genotype=False):
     """
+    apoe_alleles: randy/proj_idp/tidy_data/snps/plink_outputs/snps_aging_dementia_AD.raw
+    
     Apolipoprotein E (APOE) genotype has three major alleles
     (epsilon 2, epsilon 3, epsilon 4):
     epsilon2 - rs429358-T, rs7412-T

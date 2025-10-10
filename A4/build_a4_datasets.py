@@ -475,7 +475,7 @@ def create_stratified_folds(data, n_splits=N_SPLITS, n_bins=N_BINS, random_state
 
 
 # Process each fold
-def process_fold(data, id_col, fold_assignments, fold):
+def process_fold(data, id_col, fold_assignments, fold, age_cutoff=None):
     """
     Process individual cross-validation fold with appropriate data transformations.
 
@@ -519,6 +519,13 @@ def process_fold(data, id_col, fold_assignments, fold):
     print("  Validation:")
     print(f"    Mean: {val_cases['time_to_event'].mean():.2f}")
     print(f"    Median: {val_cases['time_to_event'].median():.2f}\n")
+
+    if age_cutoff is not None:
+        train_set = train_set[train_set.age >= age_cutoff].reset_index(drop=True)
+        val_set = val_set[val_set.age >= age_cutoff].reset_index(drop=True)
+        print(f"  After applying age cutoff of {age_cutoff}:")
+        print(f"    Training BIDs: {train_set[id_col].nunique()}")
+        print(f"    Validation BIDs: {val_set[id_col].nunique()}\n")
 
     # Preprocess data
     # zscore AGEYR
