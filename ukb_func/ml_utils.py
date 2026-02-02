@@ -7,6 +7,7 @@ from sklearn.metrics import (
     precision_recall_fscore_support,
 )
 from sklearn.metrics import (
+    brier_score_loss,
     precision_recall_curve,
     average_precision_score,
     accuracy_score,
@@ -118,13 +119,84 @@ def pick_threshold(y_true, y_probas, youden=True, beta=1):
     return best_threshold
 
 
+def pseudo_r2(y_true, y_pred):
+    from sklearn.metrics import log_loss
+    
+    eps = 1e-15
+    y_pred = np.clip(y_pred, eps, 1-eps)
+    
+    # Log-likelihoods
+    LL_full = -log_loss(y_true, y_pred, normalize=False)
+    
+    # Null model uses mean probability
+    p_null = np.mean(y_true)
+    LL_null = -log_loss(y_true, np.full_like(y_true, p_null), normalize=False)
+    
+    # McFadden
+    r2_mcfadden = 1 - (LL_full / LL_null)
+
+    # Cox-Snell
+    n = len(y_true)
+    r2_cs = 1 - np.exp((LL_null - LL_full) * 2 / n)
+    
+    # Nagelkerke
+    r2_nagelkerke = r2_cs / (1 - np.exp(-2 * LL_null / n))
+    
+    # Tjur's
+    p1 = y_pred[y_true == 1].mean()
+    p0 = y_pred[y_true == 0].mean()
+    r2_tjur = p1 - p0
+    
+    # Efron
+    ss_res = np.sum((y_true - y_pred)**2)
+    ss_tot = np.sum((y_true - p_null)**2)
+    r2_efron = 1 - ss_res / ss_tot
+    
+    return {
+        "McFadden_r2": r2_mcfadden,
+        "Cox-Snell_r2": r2_cs,
+        "Nagelkerke_r2": r2_nagelkerke,
+        "Tjur_r2": r2_tjur,
+        "Efron_r2": r2_efron
+    }
+    
+    
 # def calc_results(metric, y_true, y_probas, youden=False, beta=1, threshold=None):
 def calc_results(
     y_true, y_probas, youden=True, beta=1, threshold=None, suppress_output=True
 ):
     auroc = roc_auc_score(y_true, y_probas)
     ap = average_precision_score(y_true, y_probas)
+    brier = brier_score_loss(y_true, y_probas, pos_label=1)
 
+    # brier decomposition
+    df = pd.DataFrame({'obs': y_true, 'preds': y_probas})
+
+    # Use qcut to create equal-frequency bins (deciles)
+    # duplicates='drop' handles cases where many preds are identical
+    df['bin'] = pd.qcut(df['preds'], 10, labels=False, duplicates='drop')
+    
+    overall_mean_obs = df['obs'].mean()
+    total_n = len(df)
+    
+    rel = 0
+    res = 0
+    
+    # Group by bin to calculate components
+    bin_stats = df.groupby('bin').agg(
+        bin_n=('obs', 'count'),
+        bin_mean_preds=('preds', 'mean'),
+        bin_mean_obs=('obs', 'mean')
+    )
+    
+    for _, row in bin_stats.iterrows():
+        rel += row['bin_n'] * (row['bin_mean_preds'] - row['bin_mean_obs'])**2
+        res += row['bin_n'] * (row['bin_mean_obs'] - overall_mean_obs)**2
+    
+    reliability = rel / total_n
+    resolution = res / total_n
+    uncertainty = overall_mean_obs * (1 - overall_mean_obs)
+    
     # if metric == 'roc_auc':
     #     youden = True
 
@@ -147,6 +219,7 @@ def calc_results(
     bal_acc = balanced_accuracy_score(y_true, test_pred)
     prfs = precision_recall_fscore_support(y_true, test_pred, beta=beta)
     mcc = matthews_corrcoef(y_true, test_pred)
+    pseudor2 = pseudo_r2(y_true, y_probas)
 
     # print(f'AUROC: {auroc}, AP: {ap}, Fscore: {best_fscore}, Accuracy: {acc}, Bal. Acc.: {bal_acc}, Best threshold: {best_threshold}')
     if suppress_output:
@@ -162,6 +235,10 @@ def calc_results(
             auroc,
             ap,
             threshold,
+            brier,
+            reliability,
+            resolution,
+            uncertainty,
             tp,
             tn,
             fp,
@@ -175,11 +252,20 @@ def calc_results(
             prfs[2][0], # fbeta negative
             prfs[2][1], # fbeta positive
             mcc,
+            pseudor2["McFadden_r2"],
+            pseudor2["Cox-Snell_r2"],
+            pseudor2["Nagelkerke_r2"],
+            pseudor2["Tjur_r2"],
+            pseudor2["Efron_r2"],
         ],
         index=[
             "auroc",
             "avg_prec",
             "threshold",
+            'brier',
+            'brier_reliability',
+            'brier_resolution',
+            'brier_uncertainty',
             "TP",
             "TN",
             "FP",
@@ -193,6 +279,11 @@ def calc_results(
             f"f{beta}_n",
             f"f{beta}_p",
             "mcc",
+            "McFadden_r2",
+            "Cox-Snell_r2",
+            "Nagelkerke_r2",
+            "Tjur_r2",
+            "Efron_r2",
         ],
     )
     if return_threshold == True:

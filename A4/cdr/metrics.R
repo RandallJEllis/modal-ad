@@ -40,7 +40,7 @@ overwrite_na_coef_to_zero <- function(model) {
 }
 
 # Function to calculate Brier score at a specific time point
-calculate_brier_at_time <- function(model, data, t) {
+calculate_brier_at_time <- function(model, data, t, decomp = FALSE) {
   # Create prediction dataset up to time t
   pred_data <- data %>%
     filter(tstart <= t) %>%
@@ -106,6 +106,58 @@ calculate_brier_at_time <- function(model, data, t) {
     w = weights,
     na.rm = TRUE
   )
+
+  if (decomp) {
+    # Compute Brier score decomposition (Reliability, Resolution, Uncertainty)
+    
+    # Create valid dataframe for calculation
+    df_decomp <- data.frame(
+      pred = surv_probs,
+      obs = observed_status,
+      wt = weights
+    )
+    df_decomp <- na.omit(df_decomp)
+    
+    # Global weighted mean outcome (for uncertainty)
+    mean_obs <- weighted.mean(df_decomp$obs, w = df_decomp$wt)
+    uncertainty <- mean_obs * (1 - mean_obs)
+    
+    # Binning (using 10 deciles)
+    n_bins <- 10
+    breaks <- unique(quantile(df_decomp$pred, probs = seq(0, 1, length.out = n_bins + 1)))
+    
+    if (length(breaks) < 2) {
+      bins <- rep(1, nrow(df_decomp))
+    } else {
+      bins <- cut(df_decomp$pred, breaks = breaks, include.lowest = TRUE, labels = FALSE)
+    }
+    df_decomp$bin <- bins
+    
+    # Calculate components
+    bin_stats <- df_decomp %>%
+      group_by(bin) %>%
+      summarise(
+        sum_wt = sum(wt),
+        w_mean_pred = weighted.mean(pred, w = wt),
+        w_mean_obs = weighted.mean(obs, w = wt),
+        .groups = "drop"
+      )
+    
+    total_wt <- sum(bin_stats$sum_wt)
+    
+    # Reliability: weighted average of (mean_pred - mean_obs)^2
+    reliability <- sum(bin_stats$sum_wt * (bin_stats$w_mean_pred - bin_stats$w_mean_obs)^2) / total_wt
+    
+    # Resolution: weighted average of (mean_obs - global_mean)^2
+    resolution <- sum(bin_stats$sum_wt * (bin_stats$w_mean_obs - mean_obs)^2) / total_wt
+    
+    return(list(
+      brier = brier_score,
+      reliability = reliability,
+      resolution = resolution,
+      uncertainty = uncertainty
+    ))
+  }
 
   # cat("\nCalculated Brier score:", brier_score, "\n")
   return(brier_score)

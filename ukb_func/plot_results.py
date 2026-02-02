@@ -23,7 +23,7 @@ import scipy.stats as st
 import sys
 
 sys.path.append("./ukb_func")
-from ml_utils import concat_labels_and_probas, probas_to_results
+from rfb.code.ukb_func.ml_utils import concat_labels_and_probas, probas_to_results
 import seaborn as sns
 
 import ptitprince as pt
@@ -550,7 +550,7 @@ def _initialize_calibration_curve_plot():
     return fig, ax
 
 
-def multi_calibration_curve(filepath, model, metric, image_format, n_bins=10):
+def multi_calibration_curve(filepath, model, metric, image_format, n_bins=10, decomp=False):
     """
     Plot calibration curves for multiple experiments in one plot.
 
@@ -1043,6 +1043,154 @@ def mcc_raincloud(filepath, model, orient="v"):
                 fname = fname.replace(".pdf", f"_horizontal.{IMAGE_FORMAT}")
 
             fig.savefig(fname, facecolor="white", transparent=False, dpi=300)
+
+
+def brier_decomp_stripplot(filepath, model, orient='v'):
+    # Define list of experiments to analyze
+    expts = [
+        "age_only",
+        "age_sex_lancet2024",
+        "all_demographics",
+        "modality_only",
+        "demographics_and_lancet2024",
+        "modality_only/feature_selection",
+        "demographics_and_modality",
+        "demographics_and_modality/feature_selection",
+        "demographics_modality_lancet2024",
+        "demographics_modality_lancet2024/feature_selection",
+    ]
+
+    ages = _get_ages(filepath)
+
+    for age_cutoff in ages:
+        res_l = []
+        titles_l = []
+        for expt in expts:
+            if age_cutoff is not None:
+                dirpath = (
+                    f"{filepath}/{expt}/log_loss/{model}/agecutoff_{age_cutoff}/"
+                )
+            else:
+                dirpath = f"{filepath}/{expt}/log_loss/{model}/"
+            # Load test results for each experiment
+            _, test_results = probas_to_results(f"{dirpath}", youden=True)
+            res_l.append(test_results)
+            titles_l.append(_choose_plot_title(f"{filepath}/{expt}"))
+
+        # Define color palette for the plot
+        colors = [
+            "#ff0000",
+            "#ff7f00",
+            "#ffae00",
+            "#fff500",
+            "#a2ff00",
+            "#00ff29",
+            "#00ffce",
+            "#00c9ff",
+            "#2700ff",
+            "#ab00ff",
+        ]
+
+        # Create a 2x2 figure for all four metrics
+        fig, axes = plt.subplots(2, 2, figsize=(20, 12))
+        axes = axes.flatten()  # Flatten to easily iterate
+
+        metrics = ['brier', 'brier_reliability', 'brier_resolution',
+                   'brier_uncertainty']
+
+        for idx, metric in enumerate(metrics):
+            ax = axes[idx]
+
+            # Extract metric values for each experiment
+            y = [getattr(i, metric) for i in res_l]
+
+            # For uncertainty, only use the first experiment since it's identical for all
+            if metric == 'brier_uncertainty':
+                # Prepare the data for plotting (only first experiment)
+                data = []
+                for value in y[0]:
+                    data.append(["", value])
+
+                col = "Uncertainty"
+                data = pd.DataFrame(data, columns=["", col])
+
+                # Generate the raincloud plot with single color
+                pt.RainCloud(
+                    x="",
+                    y=col,
+                    data=data,
+                    palette=['black'],
+                    bw=0.2,
+                    ax=ax,
+                    orient=orient,
+                    box_linewidth=1,
+                    offset=0.2,
+                    move=0.2,
+                    width_viol=0.6,
+                )
+
+                # Remove x-axis tick labels
+                ax.set_xticklabels([])
+            else:
+                # Prepare the data for plotting
+                data = []
+                for i, category in enumerate(titles_l):
+
+                    # insert a newline character after every plus sign
+                    if orient == "v":
+                        category = category.replace(" + ", "\n+\n")
+
+                    for value in y[i]:
+                        data.append([category, value])
+
+                if metric == 'brier':
+                    col = 'Brier Score'
+                else:
+                    col = f"{metric.replace('brier_', '').capitalize()}"
+                data = pd.DataFrame(data, columns=["", col])
+
+                # Generate the raincloud plot
+                pt.RainCloud(
+                    x="",
+                    y=col,
+                    data=data,
+                    palette=colors,
+                    bw=0.2,
+                    ax=ax,
+                    orient=orient,
+                    box_linewidth=1,
+                    offset=0.2,
+                    move=0.2,
+                    width_viol=0.6,
+                )
+
+            # Adjust the y-axis limits to show the full peak
+            if orient == "v":
+                y_min, y_max = ax.get_ylim()
+                ax.set_ylim(y_min, y_max * 1.1)
+
+            # Customize plot appearance
+            ax.set_ylabel(col, fontweight="bold")
+
+        # Adjust the plot margins to prevent cutting off the rightmost rain only for vertical orientation
+        if orient == "v":
+            plt.subplots_adjust(right=0.95)
+
+        plt.tight_layout()
+
+        # Save the combined plot as a single file
+        if age_cutoff is not None:
+            fname = f"{filepath}/brier_decomp_raincloud_plot_agecutoff_{age_cutoff}_{model}.png"
+        else:
+            fname = f"{filepath}/brier_decomp_raincloud_plot_{model}.png"
+
+        if orient == "v":
+            fname = fname.replace(".png", "_vertical.png")
+        elif orient == "h":
+            fname = fname.replace(".png", "_horizontal.png")
+
+        fig.savefig(fname, facecolor="white", transparent=False, dpi=300)
+        plt.close(fig)
 
 
 if __name__ == "__main__":

@@ -29,26 +29,30 @@ for (amyloid_positive_only in c(TRUE, FALSE)) {
 
 
   # MAKE SURE that the first two model names are the ones being compared when plotting the individual ROC curve with the biggest year difference
-  model_names <- c("demographics_lancet",
-                    "ptau_demographics_lancet",
-                    "ptau",
-                    "centiloids",
-                    "centiloids_demographics_lancet",
-                    "ptau_centiloids_demographics_lancet")
+  model_names <- c(
+    "demographics_lancet",
+    "ptau_demographics_lancet",
+    "ptau",
+    "centiloids",
+    "centiloids_demographics_lancet",
+    "ptau_centiloids_demographics_lancet"
+  )
   width <- 8
   height <- 6
   dpi <- 300
-  save_all_figures(model_names, models_list, metrics_list, train_df_l, val_df_l,
-                   width, height, dpi, main_path)
+  save_all_figures(
+    model_names, models_list, metrics_list, train_df_l, val_df_l,
+    width, height, dpi, main_path
+  )
 }
 
 # Other stats and tables
 amyloid_positive_only <- FALSE
 if (amyloid_positive_only) {
   main_path <- "../../../tidy_data/A4/amyloid_positive/"
-  } else {
-    main_path <- "../../../tidy_data/A4/"
-  }
+} else {
+  main_path <- "../../../tidy_data/A4/"
+}
 models_list <- qs::qread(paste0(main_path, "fitted_models.qs"))
 metrics_list <- qs::qread(paste0(main_path, "metrics.qs"))
 train_df_l <- qs::qread(paste0(main_path, "train_df_l.qs"))
@@ -56,6 +60,161 @@ val_df_l <- qs::qread(paste0(main_path, "val_df_l.qs"))
 
 
 options(pillar.width = Inf)
+
+########################################################
+# REVISION - Brier decomposition
+brier_model_names <- c(
+  "demographics_lancet",
+  "ptau_demographics_lancet",
+  "ptau",
+  "centiloids",
+  "centiloids_demographics_lancet",
+  "ptau_centiloids_demographics_lancet"
+)
+
+folds <- 1:5
+eval_times <- seq(3, 8) # Adjust as needed
+
+brier_decomp_df <- data.frame(
+  model = character(),
+  fold = integer(),
+  time = numeric(),
+  brier_score = numeric(),
+  reliability = numeric(),
+  resolution = numeric(),
+  uncertainty = numeric(),
+  stringsAsFactors = FALSE
+)
+
+for (model_name in brier_model_names) {
+  for (fold in folds) {
+    model <- models_list[[model_name]][[paste0("fold_", fold)]]
+    val_data <- val_df_l[[paste0("fold_", fold)]]
+
+    for (t in eval_times) {
+      res <- tryCatch(
+        {
+          calculate_brier_at_time(model, val_data, t, decomp = TRUE)
+        },
+        error = function(e) {
+          warning(sprintf(
+            "Error for model %s, fold %d, time %f: %s",
+            model_name, fold, t, e$message
+          ))
+          return(NULL)
+        }
+      )
+
+      if (!is.null(res) && !is.na(res$brier)) {
+        brier_decomp_df <- rbind(brier_decomp_df, data.frame(
+          model = model_name,
+          fold = fold,
+          time = t,
+          brier_score = res$brier,
+          reliability = res$reliability,
+          resolution = res$resolution,
+          uncertainty = res$uncertainty
+        ))
+      }
+    }
+  }
+}
+
+print(brier_decomp_df)
+
+brier_summary <- brier_decomp_df %>%
+  group_by(model, time) %>%
+  summarise(
+    mean_metric = mean(brier_score, na.rm = TRUE),
+    sd_metric = sd(brier_score, na.rm = TRUE),
+    ymin = pmax(mean_metric - sd_metric, 0),
+    ymax = pmin(mean_metric + sd_metric, 1),
+    .groups = "drop"
+  )
+brier_summary$model <- factor(brier_summary$model, levels = model_names)
+
+reliability_summary <- brier_decomp_df %>%
+  group_by(model, time) %>%
+  summarise(
+    mean_metric = mean(reliability, na.rm = TRUE),
+    sd_metric = sd(reliability, na.rm = TRUE),
+    ymin = pmax(mean_metric - sd_metric, 0),
+    ymax = mean_metric + sd_metric,
+    .groups = "drop"
+  )
+reliability_summary$model <- factor(reliability_summary$model, levels = model_names)
+
+resolution_summary <- brier_decomp_df %>%
+  group_by(model, time) %>%
+  summarise(
+    mean_metric = mean(resolution, na.rm = TRUE),
+    sd_metric = sd(resolution, na.rm = TRUE),
+    ymin = pmax(mean_metric - sd_metric, 0),
+    ymax = mean_metric + sd_metric,
+    .groups = "drop"
+  )
+resolution_summary$model <- factor(resolution_summary$model, levels = model_names)
+
+uncertainty_summary <- brier_decomp_df %>%
+  group_by(model, time) %>%
+  summarise(
+    mean_metric = mean(uncertainty, na.rm = TRUE),
+    sd_metric = sd(uncertainty, na.rm = TRUE),
+    ymin = pmax(mean_metric - sd_metric, 0),
+    ymax = mean_metric + sd_metric,
+    .groups = "drop"
+  )
+uncertainty_summary$model <- factor(uncertainty_summary$model, levels = model_names)
+
+if (!is.null(eval_times)) {
+  brier_summary <- brier_summary %>% filter(time %in% eval_times)
+  reliability_summary <- reliability_summary %>% filter(time %in% eval_times)
+  resolution_summary <- resolution_summary %>% filter(time %in% eval_times)
+  uncertainty_summary <- uncertainty_summary %>% filter(time %in% eval_times)
+}
+
+# Brier score plot
+brier_plot <- td_plot(brier_summary,
+  model_names = brier_model_names,
+  metric = "brier",
+  all_models = FALSE,
+  eval_times = eval_times
+)
+
+# Reliability plot (lower is better - measures calibration error)
+reliability_plot <- td_plot(reliability_summary,
+  model_names = brier_model_names,
+  metric = "brier",
+  all_models = FALSE,
+  eval_times = eval_times
+) + labs(title = "Reliability Over Time", y = "Reliability")
+
+# Resolution plot (higher is better - measures discrimination)
+resolution_plot <- td_plot(resolution_summary,
+  model_names = brier_model_names,
+  metric = "brier",
+  all_models = FALSE,
+  eval_times = eval_times
+) + labs(title = "Resolution Over Time", y = "Resolution")
+
+# Uncertainty plot (baseline variability)
+uncertainty_plot <- td_plot(uncertainty_summary,
+  model_names = brier_model_names,
+  metric = "brier",
+  all_models = FALSE,
+  eval_times = eval_times
+) + labs(title = "Uncertainty Over Time", y = "Uncertainty")
+
+# Combined decomposition plot
+decomp_combined <- ((brier_plot | reliability_plot) / (resolution_plot | uncertainty_plot)) +
+  plot_layout(guides = "collect", heights = c(1, 1)) +
+  plot_annotation(tag_levels = "A")
+
+
+print(decomp_combined)
+
+ggsave("../../../figures/paper/a4_learn/brier_decomp.png", dpi = 400, width = 14, height = 8)
+
 
 ########################################################
 # Table - Summary stat ranges for models
@@ -84,8 +243,10 @@ term_order <- rownames(summary(m_list[[1]])$coefficients)
 
 # Step 4: Pivot longer
 long_df <- combined_df %>%
-  pivot_longer(cols = c(coef, `exp(coef)`, `se(coef)`, z, `Pr(>|z|)`),
-               names_to = "metric", values_to = "value")
+  pivot_longer(
+    cols = c(coef, `exp(coef)`, `se(coef)`, z, `Pr(>|z|)`),
+    names_to = "metric", values_to = "value"
+  )
 
 # Step 5: Summarize range per term and metric
 summary_range <- long_df %>%
@@ -106,7 +267,7 @@ final_table <- summary_range %>%
   pivot_wider(names_from = metric, values_from = range) %>%
   left_join(pval_means, by = "term") %>%
   arrange(pval_mean) %>%
-  select(-pval_mean)  # Remove sorting helper column if desired
+  select(-pval_mean) # Remove sorting helper column if desired
 
 
 # View
@@ -123,18 +284,21 @@ model1 <- "ptau_demographics_lancet"
 model2 <- "demographics_lancet"
 difference_dfs <- data.frame()
 for (t in seq(3, 8)) {
-  difference_dfs <- rbind(difference_dfs,
-                          df_spspppvnpv %>%
-                            filter(time == t) %>%
-                            filter(model %in% c(model1, model2)) %>%
-                            select(model, mean_sensitivity, mean_specificity, mean_ppv, mean_npv) %>%
-    mutate(difference_sensitivity = mean_sensitivity - mean_sensitivity[model == "demographics_lancet"],
-           difference_specificity = mean_specificity - mean_specificity[model == "demographics_lancet"],
-           difference_ppv = mean_ppv - mean_ppv[model == "demographics_lancet"],
-           difference_npv = mean_npv - mean_npv[model == "demographics_lancet"]) %>%
-    # print only columns with difference_
-    select(starts_with("difference_")) %>%
-    print()
+  difference_dfs <- rbind(
+    difference_dfs,
+    df_spspppvnpv %>%
+      filter(time == t) %>%
+      filter(model %in% c(model1, model2)) %>%
+      select(model, mean_sensitivity, mean_specificity, mean_ppv, mean_npv) %>%
+      mutate(
+        difference_sensitivity = mean_sensitivity - mean_sensitivity[model == "demographics_lancet"],
+        difference_specificity = mean_specificity - mean_specificity[model == "demographics_lancet"],
+        difference_ppv = mean_ppv - mean_ppv[model == "demographics_lancet"],
+        difference_npv = mean_npv - mean_npv[model == "demographics_lancet"]
+      ) %>%
+      # print only columns with difference_
+      select(starts_with("difference_")) %>%
+      print()
   )
 }
 
@@ -160,17 +324,20 @@ centiloids_demo_lancet_trocs <- pull_trocs(metrics_list, "centiloids_demographic
 ptau_centiloids_demo_lancet_trocs <- pull_trocs(metrics_list, "ptau_centiloids_demographics_lancet")
 
 # demo+lancet vs ptau+demo+lancet
-pvals_compare_trocs <- compare_tvaurocs(demo_lancet_trocs,
-                                        ptau_demo_lancet_trocs)
+pvals_compare_trocs <- compare_tvaurocs(
+  demo_lancet_trocs,
+  ptau_demo_lancet_trocs
+)
 # Table S1 - pivot table of p-values where each row is a fold and each column is a time point
 print_pvalue_latex_table(pvals_compare_trocs$all_results)
 
 # Fig S1 - Histogram of p-values, bin size 0.05
 ggsave(paste0(main_path, "pvalue_histogram_pTau217_Demo_Lancet_vs_Demo_Lancet.pdf"),
-       plot = histogram_pvals(pvals_compare_trocs$all_results),
-       width = 8,
-       height = 6,
-       dpi = 300)
+  plot = histogram_pvals(pvals_compare_trocs$all_results),
+  width = 8,
+  height = 6,
+  dpi = 300
+)
 # how many p-values are less than 0.05? out of how many total p-values?
 sum(pvals_compare_trocs$all_results$p_value < 0.05) /
   length(pvals_compare_trocs$all_results$p_value)
@@ -190,7 +357,8 @@ print(median(pvals_compare_trocs$all_results$p_value))
 # Create detailed results table
 results_table <- pvals_compare_trocs$all_results
 write.csv(results_table, paste0(main_path, "auc_comparison_results_demo_lancet_vs_ptau_demo_lancet.csv"),
-          row.names = FALSE)
+  row.names = FALSE
+)
 
 # # Boxplots at each time point of AUC differences for pTau217+Demographics+Lancet vs Demographics+Lancet
 # library(ggplot2)
@@ -220,8 +388,10 @@ write.csv(results_table, paste0(main_path, "auc_comparison_results_demo_lancet_v
 # )
 
 # demo+lancet vs centiloids+demo+lancet
-pvals_compare_trocs <- compare_tvaurocs(demo_lancet_trocs,
-                                        centiloids_demo_lancet_trocs)
+pvals_compare_trocs <- compare_tvaurocs(
+  demo_lancet_trocs,
+  centiloids_demo_lancet_trocs
+)
 # Table S2 - pivot table of p-values where each row is a fold and each column is a time point
 print_pvalue_latex_table(pvals_compare_trocs$all_results)
 
@@ -239,19 +409,23 @@ print(median(pvals_compare_trocs$all_results$p_value))
 
 # Fig S2 - Histogram of p-values, bin size 0.05
 ggsave(paste0(main_path, "pvalue_histogram_centiloids_Demo_Lancet_vs_Demo_Lancet.pdf"),
-       plot = histogram_pvals(pvals_compare_trocs$all_results),
-       width = 8,
-       height = 6,
-       dpi = 300)
+  plot = histogram_pvals(pvals_compare_trocs$all_results),
+  width = 8,
+  height = 6,
+  dpi = 300
+)
 
 # Create detailed results table
 results_table <- pvals_compare_trocs$all_results
 write.csv(results_table, paste0(main_path, "auc_comparison_results_demo_lancet_vs_centiloids_demo_lancet.csv"),
-          row.names = FALSE)
+  row.names = FALSE
+)
 
 
-pvals_compare_trocs <- compare_tvaurocs(ptau_demo_lancet_trocs,
-                                        centiloids_demo_lancet_trocs)
+pvals_compare_trocs <- compare_tvaurocs(
+  ptau_demo_lancet_trocs,
+  centiloids_demo_lancet_trocs
+)
 ########################################################
 # Generate and save results for each metric
 metrics_to_collect <- c("auc", "brier", "concordance")
@@ -276,8 +450,8 @@ pauc_res
 
 # latex table of results_table_wide with 4 decimal places
 xtable_obj <- xtable(pauc_res)
-digits(xtable_obj) <- c(0, rep(4, ncol(pauc_res)))  # Set digits for each column
-print(xtable_obj, type = "latex", sanitize.text.function = function(x) x)  # Don't escape LaTeX commands
+digits(xtable_obj) <- c(0, rep(4, ncol(pauc_res))) # Set digits for each column
+print(xtable_obj, type = "latex", sanitize.text.function = function(x) x) # Don't escape LaTeX commands
 
 
 ########################################################
@@ -306,23 +480,22 @@ for (model_name in names(models_list)) {
     for (fold in 1:5) {
       model <- models_list[[model_name]][[paste0("fold_", fold)]]
 
-      gdtotal_row <- summary(model)$coefficients['gdtotal', ]
+      gdtotal_row <- summary(model)$coefficients["gdtotal", ]
       gdtotal_coefs <- c(gdtotal_coefs, gdtotal_row[2])
       gdtotal_pvals <- c(gdtotal_pvals, gdtotal_row[5])
-
     }
   }
 }
 
 print("Summary of GDTotal coefficients and p-values by time point:")
-print(paste('Range of coefficients: ', range(gdtotal_coefs)))
-print(paste('Mean of coefficients: ', mean(gdtotal_coefs)))
-print(paste('Standard deviation of coefficients: ', sd(gdtotal_coefs)))
-print(paste('Median of coefficients: ', median(gdtotal_coefs)))
-print(paste('Range of p-values: ', range(gdtotal_pvals)))
-print(paste('Mean of p-values: ', mean(gdtotal_pvals)))
-print(paste('Standard deviation of p-values: ', sd(gdtotal_pvals)))
-print(paste('Median of p-values: ', median(gdtotal_pvals)))
+print(paste("Range of coefficients: ", range(gdtotal_coefs)))
+print(paste("Mean of coefficients: ", mean(gdtotal_coefs)))
+print(paste("Standard deviation of coefficients: ", sd(gdtotal_coefs)))
+print(paste("Median of coefficients: ", median(gdtotal_coefs)))
+print(paste("Range of p-values: ", range(gdtotal_pvals)))
+print(paste("Mean of p-values: ", mean(gdtotal_pvals)))
+print(paste("Standard deviation of p-values: ", sd(gdtotal_pvals)))
+print(paste("Median of p-values: ", median(gdtotal_pvals)))
 
 ########################################################
 # Decision curve analysis
@@ -351,8 +524,10 @@ for (t in seq(3, 8)) {
       )
 
       val_data <- val_df_l[[paste0("fold_", fold + 1, "_", model_name)]]
-      dca_data_all[[paste0("t", t, "_fold",
-                           fold, "_", model_name)]] <- data.frame(
+      dca_data_all[[paste0(
+        "t", t, "_fold",
+        fold, "_", model_name
+      )]] <- data.frame(
         fold = fold,
         time = t,
         model = model_name,
@@ -372,10 +547,10 @@ dca_plots <- dca_plots(all_dca_data)
 print(dca_plots)
 
 ggsave("../../tidy_data/A4/final_DCA_Over_Time.pdf",
-       plot = dca_plots,
-       width = 8,
-       height = 6,
-       dpi = 300
+  plot = dca_plots,
+  width = 8,
+  height = 6,
+  dpi = 300
 )
 
 
@@ -392,7 +567,7 @@ find_events_within_horizon <- function(data, horizon, newdata) {
       event_time = ifelse(event_occurred, min(tstop[event == 1]), Inf),
       within_horizon = event_occurred & event_time <= horizon
     )
-  
+
   # Match the event status to the IDs in newdata
   event_status <- numeric(nrow(newdata))
   for (i in 1:nrow(newdata)) {
@@ -408,8 +583,10 @@ find_events_within_horizon <- function(data, horizon, newdata) {
 model1 <- models_list$demographics_lancet$fold_1
 model2 <- models_list$ptau_demographics_lancet$fold_1
 df <- train_df_l$fold_1_demographics_lancet
-all.equal(train_df_l$fold_1_demographics_lancet,
-          train_df_l$fold_1_ptau_demographics_lancet) # must be TRUE
+all.equal(
+  train_df_l$fold_1_demographics_lancet,
+  train_df_l$fold_1_ptau_demographics_lancet
+) # must be TRUE
 
 # Define prediction time horizon
 horizon <- 5 # years
@@ -419,17 +596,19 @@ newdata <- df[df$tstart < 5, ] # or another relevant baseline
 
 # Get predicted survival probabilities
 pred_surv1 <- 1 - summary(survfit(model1, newdata = newdata),
-                          times = horizon)$surv
+  times = horizon
+)$surv
 pred_surv2 <- 1 - summary(survfit(model2, newdata = newdata),
-                          times = horizon)$surv     
+  times = horizon
+)$surv
 
 # Define risk categories (modify based on your clinical context)
 risk_cats <- c(0, 0.05, 0.10, 0.20, 1)
 risk_labels <- c("0-5%", "5-10%", "10-20%", ">20%")
 
 # Categorize predicted risks
-risk_cat1 <- cut(pred_surv1, breaks=risk_cats, labels=risk_labels, include.lowest=TRUE)
-risk_cat2 <- cut(pred_surv2, breaks=risk_cats, labels=risk_labels, include.lowest=TRUE)
+risk_cat1 <- cut(pred_surv1, breaks = risk_cats, labels = risk_labels, include.lowest = TRUE)
+risk_cat2 <- cut(pred_surv2, breaks = risk_cats, labels = risk_labels, include.lowest = TRUE)
 
 # Create reclassification table
 reclass_table <- table(risk_cat1, risk_cat2)
@@ -441,15 +620,15 @@ names(percent_reclass) <- risk_labels
 
 for (i in 1:length(risk_labels)) {
   cat <- risk_labels[i]
-  n_total <- sum(reclass_table[i,])
-  n_reclass <- n_total - reclass_table[i,i]
+  n_total <- sum(reclass_table[i, ])
+  n_reclass <- n_total - reclass_table[i, i]
   percent_reclass[i] <- 100 * n_reclass / n_total
 }
 print(percent_reclass)
 
 # Create a dataframe with predicted risks and actual outcomes
 reclass_df <- data.frame(
-  id = newdata$id,  # Use actual IDs from newdata
+  id = newdata$id, # Use actual IDs from newdata
   risk_cat1 = risk_cat1,
   risk_cat2 = risk_cat2,
   pred_risk1 = pred_surv1,
@@ -467,7 +646,7 @@ time_info <- df %>%
   summarize(
     max_time = max(tstop),
     event_time = ifelse(any(event == 1), min(tstop[event == 1]), max_time),
-    time = pmin(event_time, horizon)  # Censor at horizon for NRI analysis
+    time = pmin(event_time, horizon) # Censor at horizon for NRI analysis
   )
 
 # Join this time information to your reclass_df
@@ -484,21 +663,24 @@ print(paste("Length of reclass_df$event:", length(reclass_df$event)))
 
 # Now call nricens with the corrected data
 nri_result <- nricens(
-  time = reclass_df$time,      # Time to event or censoring
-  event = reclass_df$event,    # Event indicator (1=event, 0=censored)
-  p.std = pred_surv1,          # Predicted risks from standard model
-  p.new = pred_surv2,          # Predicted risks from new model
-  cut = risk_cats[-1],         # Cut points for risk categories
-  t0 = horizon                 # Time horizon for prediction
+  time = reclass_df$time, # Time to event or censoring
+  event = reclass_df$event, # Event indicator (1=event, 0=censored)
+  p.std = pred_surv1, # Predicted risks from standard model
+  p.new = pred_surv2, # Predicted risks from new model
+  cut = risk_cats[-1], # Cut points for risk categories
+  t0 = horizon # Time horizon for prediction
 )
 
 # Calculate observed event rates within each cell of the reclassification table
 observed_rates <- aggregate(event ~ risk_cat1 + risk_cat2,
-                            data = reclass_df, FUN = mean)
+  data = reclass_df, FUN = mean
+)
 
 # Format as a matrix similar to Table 3 in the paper
-observed_matrix <- matrix(NA, nrow=length(risk_labels),
-                          ncol=length(risk_labels))
+observed_matrix <- matrix(NA,
+  nrow = length(risk_labels),
+  ncol = length(risk_labels)
+)
 rownames(observed_matrix) <- colnames(observed_matrix) <- risk_labels
 
 for (i in 1:nrow(observed_rates)) {
@@ -520,8 +702,8 @@ print(paste("Length of reclass_df$event:", length(reclass_df$event)))
 # Create a complete data frame with all required variables
 nri_data <- data.frame(
   id = newdata$id,
-  pred_surv1 = pred_surv1[1,],
-  pred_surv2 = pred_surv2[1,],
+  pred_surv1 = pred_surv1[1, ],
+  pred_surv2 = pred_surv2[1, ],
   time = reclass_df$time,
   event = reclass_df$event
 )
@@ -539,12 +721,12 @@ nri_data$event <- as.numeric(nri_data$event)
 
 # Try using the function with minimal parameters first
 nri_result <- nricens(
-  time = reclass_df$time,      # Time to event or censoring
-  event = reclass_df$event,    # Event indicator (1=event, 0=censored)
-  p.std = pred_surv1,          # Predicted risks from standard model
-  p.new = pred_surv2,          # Predicted risks from new model
-  cut = risk_cats[-1],         # Cut points for risk categories
-  t0 = horizon                 # Time horizon for prediction
+  time = reclass_df$time, # Time to event or censoring
+  event = reclass_df$event, # Event indicator (1=event, 0=censored)
+  p.std = pred_surv1, # Predicted risks from standard model
+  p.new = pred_surv2, # Predicted risks from new model
+  cut = risk_cats[-1], # Cut points for risk categories
+  t0 = horizon # Time horizon for prediction
 )
 
 print(summary(nri_result))
@@ -576,12 +758,12 @@ risk_cats_labels <- c("< 5%", "5-10%", "10-20%", "20-100%", "≥ 100%")
 # Create links from the reclassification tables
 for (i in 1:nrow(nri_result$rtab)) {
   for (j in 1:ncol(nri_result$rtab)) {
-    if (nri_result$rtab[i,j] > 0) {
+    if (nri_result$rtab[i, j] > 0) {
       # For all individuals
       links <- rbind(links, data.frame(
         source = paste("Old:", risk_cats_labels[i]),
         target = paste("New:", risk_cats_labels[j]),
-        value = nri_result$rtab[i,j],
+        value = nri_result$rtab[i, j],
         group = "All"
       ))
     }
@@ -596,10 +778,12 @@ nodes <- data.frame(
 links$source <- match(links$source, nodes$name) - 1
 links$target <- match(links$target, nodes$name) - 1
 
-sankeyNetwork(Links = links, Nodes = nodes,
-              Source = "source", Target = "target",
-              Value = "value", NodeID = "name",
-              LinkGroup = "group", fontSize = 12)
+sankeyNetwork(
+  Links = links, Nodes = nodes,
+  Source = "source", Target = "target",
+  Value = "value", NodeID = "name",
+  LinkGroup = "group", fontSize = 12
+)
 
 ### Risk Shift Plot
 
@@ -618,8 +802,10 @@ rsp <- ggplot(plot_df, aes(x = Model1, y = Model2, color = Event)) +
   geom_point(alpha = 0.3) +
   geom_abline(slope = 1, intercept = 0, linetype = "dashed") +
   scale_color_manual(values = c("Case" = "red", "Control" = "blue")) +
-  labs(x = "Risk from Model 1", y = "Risk from Model 2",
-       title = "Change in Predicted Risk Between Models") +
+  labs(
+    x = "Risk from Model 1", y = "Risk from Model 2",
+    title = "Change in Predicted Risk Between Models"
+  ) +
   theme_minimal() +
   coord_fixed(ratio = 1)
 
@@ -628,17 +814,18 @@ print(rsp)
 
 # Also save the plot to ensure it's being generated
 ggsave("../../tidy_data/A4/risk_shift_plot.pdf",
-       plot = rsp,
-       width = 8,
-       height = 6,
-       dpi = 300)
+  plot = rsp,
+  width = 8,
+  height = 6,
+  dpi = 300
+)
 
 ### NRI components
 nri_components <- data.frame(
   Component = c("Overall NRI", "Events (NRI+)", "Non-events (NRI-)"),
-  Estimate = c(nri_result$nri[1,1], nri_result$nri[2,1], nri_result$nri[3,1]),
-  Lower = c(nri_result$nri[1,2], nri_result$nri[2,2], nri_result$nri[3,2]),
-  Upper = c(nri_result$nri[1,3], nri_result$nri[2,3], nri_result$nri[3,3])
+  Estimate = c(nri_result$nri[1, 1], nri_result$nri[2, 1], nri_result$nri[3, 1]),
+  Lower = c(nri_result$nri[1, 2], nri_result$nri[2, 2], nri_result$nri[3, 2]),
+  Upper = c(nri_result$nri[1, 3], nri_result$nri[2, 3], nri_result$nri[3, 3])
 )
 
 # Create bar plot with error bars
@@ -646,8 +833,10 @@ nri_components_plot <- ggplot(nri_components, aes(x = Component, y = Estimate, f
   geom_bar(stat = "identity", width = 0.6) +
   geom_errorbar(aes(ymin = Lower, ymax = Upper), width = 0.2) +
   geom_hline(yintercept = 0, linetype = "dashed") +
-  labs(title = "Net Reclassification Improvement Components",
-       y = "NRI Value", x = "") +
+  labs(
+    title = "Net Reclassification Improvement Components",
+    y = "NRI Value", x = ""
+  ) +
   theme_minimal() +
   theme(legend.position = "none")
 
@@ -656,10 +845,11 @@ print(nri_components_plot)
 
 # Also save the plot to ensure it's being generated
 ggsave("../../tidy_data/A4/nri_components_plot.pdf",
-       plot = nri_components_plot,
-       width = 8,
-       height = 6,
-       dpi = 300)
+  plot = nri_components_plot,
+  width = 8,
+  height = 6,
+  dpi = 300
+)
 
 
 ### Heatmap of reclassification table
@@ -675,21 +865,28 @@ reclass_df$Label <- paste0(reclass_df$Count, "\n(", reclass_df$Percent, "%)")
 # Create publication-quality heat map
 heatmap_reclass_df <- ggplot(reclass_df, aes(x = New, y = Old, fill = Count)) +
   geom_tile(color = "white", linewidth = 0.5) +
-  geom_text(aes(label = Label), 
-            # Adjust text color based on background brightness for better contrast
-            color = ifelse(reclass_df$Count > mean(reclass_df$Count) * 1.5, "white", "black"),
-            fontface = "bold", size = 4) +  # Increased text size
-  scale_fill_viridis_c(option = "mako",    # Changed to "mako" for better contrast
-                       trans = "log", 
-                       name = "Number of\nPatients",
-                       guide = guide_colorbar(title.position = "top",
-                                            barwidth = 10, 
-                                            barheight = 0.5)) +
-  labs(title = "Risk Reclassification Matrix",
-       subtitle = "Demographics + Lancet vs. pTau-217 + Demographics + Lancet",
-       x = "Risk Category with pTau-217 Model", 
-       y = "Risk Category with Demographics Model",
-       caption = "Numbers show count and percentage of total patients") +
+  geom_text(aes(label = Label),
+    # Adjust text color based on background brightness for better contrast
+    color = ifelse(reclass_df$Count > mean(reclass_df$Count) * 1.5, "white", "black"),
+    fontface = "bold", size = 4
+  ) + # Increased text size
+  scale_fill_viridis_c(
+    option = "mako", # Changed to "mako" for better contrast
+    trans = "log",
+    name = "Number of\nPatients",
+    guide = guide_colorbar(
+      title.position = "top",
+      barwidth = 10,
+      barheight = 0.5
+    )
+  ) +
+  labs(
+    title = "Risk Reclassification Matrix",
+    subtitle = "Demographics + Lancet vs. pTau-217 + Demographics + Lancet",
+    x = "Risk Category with pTau-217 Model",
+    y = "Risk Category with Demographics Model",
+    caption = "Numbers show count and percentage of total patients"
+  ) +
   scale_x_discrete(position = "top") +
   theme_minimal(base_family = "Helvetica") +
   theme(
@@ -706,17 +903,20 @@ heatmap_reclass_df <- ggplot(reclass_df, aes(x = New, y = Old, fill = Count)) +
     plot.margin = margin(20, 20, 20, 20)
   ) +
   # Add diagonal line highlighting to show unchanged classifications
-  geom_tile(data = subset(reclass_df, Old == New), 
-            aes(x = New, y = Old), 
-            fill = NA, color = "black", linewidth = 1.2)
+  geom_tile(
+    data = subset(reclass_df, Old == New),
+    aes(x = New, y = Old),
+    fill = NA, color = "black", linewidth = 1.2
+  )
 
 # Explicitly print the plot
 print(heatmap_reclass_df)
 
 # Also save the plot to ensure it's being generated
 ggsave("../../tidy_data/A4/risk_reclassification_heatmap.pdf",
-       plot = heatmap_reclass_df,
-       width = 8, height = 7, dpi = 300)
+  plot = heatmap_reclass_df,
+  width = 8, height = 7, dpi = 300
+)
 
 ### Observed Event Rate Plot
 # Create data frame with observed event rates
@@ -731,14 +931,14 @@ risk_levels <- colnames(nri_result$rtab)
 
 for (i in 1:length(risk_levels)) {
   for (j in 1:length(risk_levels)) {
-    total = nri_result$rtab[i,j]
+    total <- nri_result$rtab[i, j]
     if (total > 0) {
-      events = nri_result$rtab.case[i,j]
+      events <- nri_result$rtab.case[i, j]
       event_rates <- rbind(event_rates, data.frame(
         Old = risk_levels[i],
         New = risk_levels[j],
         Count = total,
-        EventRate = events/total*100
+        EventRate = events / total * 100
       ))
     }
   }
@@ -747,13 +947,16 @@ for (i in 1:length(risk_levels)) {
 # Plot event rates
 event_rate_plot <- ggplot(event_rates, aes(x = New, y = Old, fill = EventRate)) +
   geom_tile() +
-  geom_text(aes(label = sprintf("%.1f%%", EventRate)), 
-            color = ifelse(event_rates$EventRate > 50, "white", "black")) +
+  geom_text(aes(label = sprintf("%.1f%%", EventRate)),
+    color = ifelse(event_rates$EventRate > 50, "white", "black")
+  ) +
   scale_fill_gradient(low = "white", high = "red") +
-  labs(title = "Observed Event Rate by Risk Reclassification",
-       x = "New Model Risk Category", 
-       y = "Original Model Risk Category",
-       fill = "Event Rate (%)") +
+  labs(
+    title = "Observed Event Rate by Risk Reclassification",
+    x = "New Model Risk Category",
+    y = "Original Model Risk Category",
+    fill = "Event Rate (%)"
+  ) +
   theme_minimal()
 
 # Explicitly print the plot
@@ -761,10 +964,11 @@ print(event_rate_plot)
 
 # Also save the plot to ensure it's being generated
 ggsave("../../tidy_data/A4/event_rate_plot.pdf",
-       plot = event_rate_plot,
-       width = 8,
-       height = 6,
-       dpi = 300)
+  plot = event_rate_plot,
+  width = 8,
+  height = 6,
+  dpi = 300
+)
 
 ### Decision Curve Analysis
 library(rmda)
@@ -773,8 +977,8 @@ library(rmda)
 dca_df <- data.frame(
   # event = reclass_df$event,
   event = ifelse(rep(1:2, length.out = length(nri_result$p.std)) == 1, 0, 1),
-  p.std = nri_result$p.std[1,],  # Extract first row of matrix
-  p.new = nri_result$p.new[1,]   # Extract first row of matrix
+  p.std = nri_result$p.std[1, ], # Extract first row of matrix
+  p.new = nri_result$p.new[1, ] # Extract first row of matrix
 )
 # dca_df$event <- as.factor(dca_df$event)
 # Verify the data is properly formatted
@@ -794,20 +998,22 @@ decision_curve <- decision_curve(
 
 
 # Plot decision curve
-decision_curve_plot <- plot_decision_curve(decision_curve, 
-                    curve.names = c("Standard Model", "New Model"),
-                    xlab = "Threshold Probability (%)",
-                    ylab = "Net Benefit",
-                    cost.benefit.axis = TRUE,
-                    col = c("blue", "red"),
-                    confidence.intervals = FALSE)
+decision_curve_plot <- plot_decision_curve(decision_curve,
+  curve.names = c("Standard Model", "New Model"),
+  xlab = "Threshold Probability (%)",
+  ylab = "Net Benefit",
+  cost.benefit.axis = TRUE,
+  col = c("blue", "red"),
+  confidence.intervals = FALSE
+)
 
 # Explicitly print the plot
 print(decision_curve_plot)
 
 # Also save the plot to ensure it's being generated
 ggsave("../../tidy_data/A4/decision_curve_plot.pdf",
-       plot = decision_curve_plot,
-       width = 8,
-       height = 6,
-       dpi = 300)
+  plot = decision_curve_plot,
+  width = 8,
+  height = 6,
+  dpi = 300
+)
