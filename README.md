@@ -1,6 +1,6 @@
-# Dementia Prediction Codebase
+# Alzheimer's Prediction Codebase
 
-This repository contains code to run machine learning experiments aimed at predicting dementia using various data modalities. There are three core scripts:
+This repository contains code to run machine learning experiments aimed at predicting Alzheimer's using various data modalities. There are three core scripts:
 
 1. **ml_experiments.py**: 
    - Runs machine learning experiments with various specifications.
