@@ -1,0 +1,12 @@
+# bash output files
+*.out
+*.err
+rfb
+rfb.pub
+*.ipynb
+*.csv
+*catboost*
+*DS_Store*
+._*
+*.ipynb
+**.ipynb
