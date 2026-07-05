@@ -5,10 +5,10 @@ import sys
 
 # Add custom utility modules to the path
 import os, sys
-_UKBROOT = os.path.dirname(os.path.abspath(__file__))
-while _UKBROOT != os.path.dirname(_UKBROOT) and not os.path.isdir(os.path.join(_UKBROOT, "ukb_func")):
-    _UKBROOT = os.path.dirname(_UKBROOT)
-sys.path.insert(0, os.path.join(_UKBROOT, "ukb_func"))
+_LIBDIR = os.path.dirname(os.path.abspath(__file__))
+while _LIBDIR != os.path.dirname(_LIBDIR) and not os.path.isdir(os.path.join(_LIBDIR, "utils")):
+    _LIBDIR = os.path.dirname(_LIBDIR)
+sys.path.insert(0, os.path.join(_LIBDIR, "utils"))
 import ml_utils
 
 sys.path.append("../pet")

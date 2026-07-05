@@ -50,7 +50,7 @@ The code is organized by role into six top-level directories:
 .
 ├── README.md  LICENSE  CITATION.cff  requirements.txt  environment.yml  .gitignore
 │
-├── ukb_func/            ← shared Python library, imported everywhere
+├── utils/               ← shared project library, imported everywhere
 │   ├── README.md
 │   ├── requirements.txt  ← full frozen conda spec (linux-64)
 │   └── *.py               (ml_utils, dementia_utils, ukb_utils, df_utils, …)
@@ -85,7 +85,7 @@ The code is organized by role into six top-level directories:
 ```
 
 Every top-level directory (and most subdirectories) contains its own `README.md`;
-start there for any specific analysis. `ukb_func/` stays at the repository root so that
+start there for any specific analysis. `utils/` stays at the repository root so that
 every script can locate it; scripts add it to the import path by walking up to find it,
 so they can be launched from any working directory.
 
@@ -142,7 +142,7 @@ pip install -r requirements.txt
 Core Python stack: `scikit-learn`, `pandas`, `numpy`, `flaml`, `lightgbm`,
 `scikit-survival`, `lifelines`, `pyarrow`, `matplotlib`, `seaborn`, `scipy`,
 `python-docx`. A complete frozen conda specification (linux-64) used on the original
-HPC systems is preserved at [`ukb_func/requirements.txt`](ukb_func/requirements.txt).
+HPC systems is preserved at [`utils/requirements.txt`](utils/requirements.txt).
 
 ### R (survival analysis and figures)
 
@@ -162,7 +162,7 @@ install.packages(c(
 
 The pipeline runs in four stages. Steps 2–4 are independent given the built datasets.
 
-> **Running scripts.** `ukb_func` is located automatically (scripts walk up the tree to
+> **Running scripts.** `utils` is located automatically (scripts walk up the tree to
 > find it), so imports work from any working directory. The **data** directory paths in
 > the build/analysis scripts (`tidy_data/`, `results/`, `raw_data/`, `proj_idp/`, …) are
 > environment-specific and are set per script — adjust them (or the exposed CLI

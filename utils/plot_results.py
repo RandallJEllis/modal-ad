@@ -22,7 +22,6 @@ from sklearn.metrics import brier_score_loss, log_loss, mean_squared_error
 import scipy.stats as st
 import sys
 
-sys.path.append("./ukb_func")
 from ml_utils import concat_labels_and_probas, probas_to_results
 import seaborn as sns
 
