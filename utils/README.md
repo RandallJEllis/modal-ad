@@ -15,19 +15,18 @@ working only on the non-UK-Biobank cohorts, these are the only modules you need:
 
 | Module | Imported by (outside `ukbiobank/`) |
 | --- | --- |
-| `ml_utils.py` | `cohorts/A4/t2e.py`, `cohorts/nacc_csf/build_csf_datasets.py`, `analysis/feature_importance/retrain_extract_fi.py` |
-| `plot_results.py` | `cohorts/A4/t2e.py`, `analysis/feature_importance_tables.py`, `analysis/feature_importance/retrain_extract_fi.py` |
-| `df_utils.py` | `cohorts/A4/t2e.py`, `analysis/feature_importance/retrain_extract_fi.py` |
-| `utils.py` | `cohorts/A4/t2e.py`, `analysis/feature_importance/retrain_extract_fi.py` |
-| `ukb_utils.py` | `cohorts/A4/t2e.py`, `analysis/heterogeneity_analysis.py`, `analysis/feature_importance_tables.py`, `analysis/feature_importance/retrain_extract_fi.py` |
+| `ml_utils.py` | `cohorts/nacc_csf/build_csf_datasets.py`, `analysis/feature_importance/retrain_extract_fi.py` |
+| `plot_results.py` | `analysis/feature_importance_tables.py`, `analysis/feature_importance/retrain_extract_fi.py` |
+| `df_utils.py` | `analysis/feature_importance/retrain_extract_fi.py` |
+| `utils.py` | `analysis/feature_importance/retrain_extract_fi.py` |
+| `ukb_utils.py` | `analysis/heterogeneity_analysis.py`, `analysis/feature_importance_tables.py`, `analysis/feature_importance/retrain_extract_fi.py` |
 | `dementia_utils.py` | `analysis/heterogeneity_analysis.py` |
 | `icd.py` | `analysis/feature_importance/retrain_extract_fi.py` |
 | `f3.py` | `analysis/feature_importance/retrain_extract_fi.py` |
-| `bootstrap.py` | *(none — see note below)* |
 
-> Note: much of the R-based cohort analysis (`cohorts/*/*.R`, `survival/`) does **not**
-> use this Python library at all — it relies on the shared R helpers in
-> [`../survival/time2event/`](../survival/time2event/) instead.
+> Note: among the external cohorts, only `cohorts/nacc_csf/build_csf_datasets.py` imports
+> this Python library (`ml_utils`). The rest of the cohort analysis is R-based and relies
+> on the shared R helpers in [`../survival/time2event/`](../survival/time2event/) instead.
 
 ## Modules
 
@@ -42,7 +41,6 @@ the external cohorts and robustness analyses.
 | `df_utils.py` | Generic DataFrame helpers (e.g. `pull_columns_by_prefix`). |
 | `f3.py` | F3-score metric (`f3_metric`) used as a FLAML optimization objective. |
 | `utils.py` | Miscellaneous I/O helpers (`save_pickle`, folder-existence checks). |
-| `bootstrap.py` | Bootstrap confidence intervals. **Currently not imported anywhere** — retained for reference; safe to remove if unwanted. |
 
 ### UK Biobank–specific
 These encode UK Biobank data structures, field codings, and cohort-definition logic.

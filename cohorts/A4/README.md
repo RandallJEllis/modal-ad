@@ -9,12 +9,10 @@ two consecutive visits.
 | --- | --- |
 | `build_datasets.py` | Process pTau217 and CDR measurements; define cases from CDR progression; compute time-to-event. |
 
-### Survival models
+### Survival model
 | File | Purpose |
 | --- | --- |
-| `tvcox.R` | Time-varying-covariate Cox proportional-hazards model. |
-| `t2e.py`, `t2e_final.R` | Time-to-event modeling and final analysis. |
-| `loop_t2e.sh`, `sh_t2e.sh` | SLURM submission scripts. |
+| `tvcox.R` | Time-varying-covariate Cox proportional-hazards model — the A4 time-to-event model (run interactively in R). |
 
 ### `cdr/` sub-analysis
 CDR-outcome time-to-event analysis: `tvcox_CDR.R` (model), `metrics.R`,
