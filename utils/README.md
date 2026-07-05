@@ -15,19 +15,18 @@ working only on the non-UK-Biobank cohorts, these are the only modules you need:
 
 | Module | Imported by (outside `ukbiobank/`) |
 | --- | --- |
-| `ml_utils.py` | `cohorts/nacc_csf/build_csf_datasets.py`, `cohorts/A4/pacc/pacc_regression.py`, `analysis/feature_importance/retrain_extract_fi.py` |
+| `ml_utils.py` | `cohorts/nacc_csf/build_csf_datasets.py`, `analysis/feature_importance/retrain_extract_fi.py` |
 | `plot_results.py` | `analysis/feature_importance_tables.py`, `analysis/feature_importance/retrain_extract_fi.py` |
-| `df_utils.py` | `cohorts/A4/pacc/pacc_regression.py`, `analysis/feature_importance/retrain_extract_fi.py` |
+| `df_utils.py` | `analysis/feature_importance/retrain_extract_fi.py` |
 | `utils.py` | `analysis/feature_importance/retrain_extract_fi.py` |
 | `ukb_utils.py` | `analysis/heterogeneity_analysis.py`, `analysis/feature_importance_tables.py`, `analysis/feature_importance/retrain_extract_fi.py` |
 | `dementia_utils.py` | `analysis/heterogeneity_analysis.py` |
 | `icd.py` | `analysis/feature_importance/retrain_extract_fi.py` |
 | `f3.py` | `analysis/feature_importance/retrain_extract_fi.py` |
 
-> Note: among the external cohorts, only `cohorts/nacc_csf/build_csf_datasets.py`
-> (`ml_utils`) and `cohorts/A4/pacc/pacc_regression.py` (`ml_utils`, `df_utils`) import
-> this Python library. The rest of the cohort analysis is R-based and relies on the
-> shared R helpers in [`../survival/time2event/`](../survival/time2event/) instead.
+> Note: among the external cohorts, only `cohorts/nacc_csf/build_csf_datasets.py` imports
+> this Python library (`ml_utils`). The rest of the cohort analysis is R-based and relies
+> on the shared R helpers in [`../survival/time2event/`](../survival/time2event/) instead.
 
 ## Modules
 
