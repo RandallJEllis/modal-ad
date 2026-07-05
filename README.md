@@ -1,9 +1,8 @@
 # Multimodal Prediction of Dementia and Alzheimer's Disease
 
 Code accompanying the study of machine-learning prediction of incident dementia and
-Alzheimer's disease (AD) from multiple data modalities in the **UK Biobank**, with
-external evaluation in the **ADNI**, **A4**, multi-cohort **PET**, and **NACC CSF**
-cohorts.
+Alzheimer's disease (AD) from multiple data modalities in the **A4**, **ADNI**, 
+multi-cohort **PET**, **NACC CSF**, and **UK Biobank**.
 
 > **Associated publication.** _Add full citation, journal, year, and DOI here once
 > the paper is published_ (see [`CITATION.cff`](CITATION.cff)). Please cite the paper
