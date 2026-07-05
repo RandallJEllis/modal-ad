@@ -1,0 +1,27 @@
+# Core Python dependencies for the modal-ad codebase.
+#   pip install -r requirements.txt
+#
+# Versions are intentionally unpinned here for portability. The exact frozen
+# environment used on the original HPC systems (linux-64) is preserved at
+# ukb_func/requirements.txt (a `conda create --file` specification).
+
+# Data handling
+numpy
+pandas
+pyarrow
+scipy
+
+# Machine learning
+scikit-learn
+flaml[automl]      # AutoML orchestration (pulls in lightgbm, xgboost)
+lightgbm
+
+# Survival analysis
+scikit-survival
+lifelines
+
+# Plotting / reporting
+matplotlib
+seaborn
+ptitprince         # raincloud plots
+python-docx        # Word-table export (make_vif_reviewer_tables.py)

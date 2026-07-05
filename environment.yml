@@ -1,0 +1,26 @@
+# Conda environment for the modal-ad codebase (Python components).
+#   conda env create -f environment.yml
+#   conda activate modal-ad
+#
+# The R survival scripts require a separate R installation; see README.md.
+# A fully frozen linux-64 spec is preserved at ukb_func/requirements.txt.
+name: modal-ad
+channels:
+  - conda-forge
+dependencies:
+  - python=3.12
+  - numpy
+  - pandas
+  - pyarrow
+  - scipy
+  - scikit-learn
+  - lightgbm
+  - matplotlib
+  - seaborn
+  - pip
+  - pip:
+      - flaml[automl]
+      - scikit-survival
+      - lifelines
+      - ptitprince
+      - python-docx
