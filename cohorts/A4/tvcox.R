@@ -12,8 +12,8 @@ library(riskRegression)
 library(survminer)
 
 setwd(dirname(rstudioapi::getActiveDocumentContext()$path))
-source("pub_figures.R")
-source("metrics.R")
+source(file.path(this.path::this.dir(), "..", "..", "survival", "time2event", "pub_figures.R"))
+source(file.path(this.path::this.dir(), "..", "..", "survival", "time2event", "metrics.R"))
 
 # Load fonts
 library(extrafont)

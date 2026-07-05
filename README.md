@@ -24,13 +24,13 @@ those predictions behave across clinically relevant subgroups.
   **L1-regularized logistic regression**, tuned with the
   [FLAML](https://microsoft.github.io/FLAML/) AutoML framework. Discrimination is optimized
   on log loss.
-- **Two prediction framings:**
-  1. **Cross-sectional classification** — predict whether a participant will be
-     diagnosed within the follow-up window (`ml_experiments.py`).
-  2. **Time-to-event / survival analysis** — model time to diagnosis with Cox
-     proportional-hazards, time-varying-covariate, and joint longitudinal-survival
-     models (`timetoevent_experiments.py`, the `time2event/` R suite, and the
-     per-cohort `tv*.R` scripts).
+- **Two prediction framings, applied to different cohorts:**
+  1. **Cross-sectional classification** (UK Biobank) — predict whether a participant
+     will be diagnosed within the follow-up window (`ml_experiments.py`).
+  2. **Time-to-event / survival analysis** (external cohorts) — model time to diagnosis
+     with Cox proportional-hazards, time-varying-covariate, and joint
+     longitudinal-survival models (the `survival/time2event/` R suite and the
+     per-cohort `tv*.R` scripts). *Not applied to UK Biobank.*
 - **Cohorts:** ADNI, the A4 secondary-prevention trial (pTau217 + Clinical Dementia Rating
   progression), a pooled five-cohort PET analysis (OASIS, NACC, HABS, ADNI, AIBL),
   NACC cerebrospinal-fluid (CSF) biomarkers, and UK Biobank for proteomics, multi-modal
@@ -59,8 +59,6 @@ The code is organized by role into six top-level directories:
 │   ├── ml_experiments.py           ← cross-sectional AutoML classifier (core script)
 │   ├── sh_ml_experiments.sh        ← SLURM sbatch wrapper for one run
 │   ├── loop_ml.sh                  ← submits the full grid of jobs
-│   ├── timetoevent_experiments.py  ← survival/time-to-event AutoML variant
-│   ├── sh_timetoevent_experiments.sh  loop_timetoevent.sh
 │   ├── proteomics/                 ← build_ml_datasets.py + experiments + figures
 │   ├── neuroimaging/               ← build_ml_datasets.py (brain IDPs)
 │   ├── cognitive_tests/            ← build_ml_datasets.py
@@ -205,14 +203,13 @@ python ukbiobank/ml_experiments.py \
 Outputs (probabilities, labels, per-region metrics) are written under
 `results/UKBiobank/{outcome}/{modality}/{experiment}/{metric}/{model}/{age_cutoff}/`.
 
-### Stage 3 — Time-to-event / survival
+### Stage 3 — Time-to-event / survival (external cohorts)
 
-`ukbiobank/timetoevent_experiments.py` mirrors Stage 2 for survival outcomes (random
-survival forests + AutoML). The cohort-specific R scripts (`cohorts/A4/`,
-`cohorts/ADNI/`, `cohorts/pet/`, `cohorts/nacc_csf/`, `survival/time2event/`) fit Cox,
-time-varying-covariate, and joint models and produce the publication survival figures
-and metrics (including Brier decomposition, NRI, and decision curves via
-`survival/time2event/metrics.R`).
+Time-to-event modeling is applied to the **external cohorts only** (not UK Biobank).
+The cohort-specific R scripts (`cohorts/A4/`, `cohorts/ADNI/`, `cohorts/pet/`,
+`cohorts/nacc_csf/`, `survival/time2event/`) fit Cox, time-varying-covariate, and joint
+models and produce the publication survival figures and metrics (including Brier
+decomposition, NRI, and decision curves via `survival/time2event/metrics.R`).
 
 ### Stage 4 — Feature importance and robustness
 
