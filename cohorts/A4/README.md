@@ -19,5 +19,10 @@ CDR-outcome time-to-event analysis: `tvcox_CDR.R` (model), `metrics.R`,
 `plot_figures.R`, `generate_plots_tables.R` (evaluation/figures), and
 `vif_model_check.R` (multicollinearity diagnostics).
 
+### [`pacc/`](pacc/) sub-analysis
+Models the Preclinical Alzheimer's Cognitive Composite (PACC) as a continuous outcome —
+a FLAML/LightGBM regression pipeline plus time-varying and cubic-spline R models. See
+[`pacc/README.md`](pacc/README.md).
+
 See the root [`README.md`](../../README.md) and [`../../survival/time2event/`](../../survival/time2event/) for the
 shared survival-metric utilities.
