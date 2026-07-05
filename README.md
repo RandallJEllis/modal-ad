@@ -12,18 +12,18 @@ multi-cohort **PET**, **NACC CSF**, and **UK Biobank** cohorts.
 
 ## 1. Overview
 
-The project asks how well incident dementia (and, as a secondary outcome, Alzheimer's
-disease specifically) can be predicted from different classes of measurement, and how
+The project asks how well incident Alzheimer's (and, as a secondary outcome, 
+all-cause dementia) can be predicted from different classes of measurement, and how
 those predictions behave across clinically relevant subgroups.
 
-- **Primary modeling cohort:** UK Biobank.
-- **Data modalities:** blood **proteomics**, **neuroimaging** (brain IDPs), and
-  **cognitive tests**, each combined with demographics and the modifiable risk
+- **Data modalities:** blood biomarkers, amyloid PET, cerebrospinal fluid markers,
+  proteomics, neuroimaging (brain IDPs), and
+  cognitive tests, each combined with demographics, APOE genotype, and the modifiable risk
   factors from the 2024 Lancet Commission on dementia.
-- **Models:** gradient-boosted trees (**LightGBM**) and **L1-regularized logistic
-  regression**, tuned with the [FLAML](https://microsoft.github.io/FLAML/) AutoML
-  framework. Discrimination is optimized on log loss by default (with ROC-AUC, F3,
-  and average precision also supported).
+- **Models:** Cox survival models, gradient-boosted trees (**LightGBM**) and
+  **L1-regularized logistic regression**, tuned with the
+  [FLAML](https://microsoft.github.io/FLAML/) AutoML framework. Discrimination is optimized
+  on log loss.
 - **Two prediction framings:**
   1. **Cross-sectional classification** — predict whether a participant will be
      diagnosed within the follow-up window (`ml_experiments.py`).
@@ -31,9 +31,10 @@ those predictions behave across clinically relevant subgroups.
      proportional-hazards, time-varying-covariate, and joint longitudinal-survival
      models (`timetoevent_experiments.py`, the `time2event/` R suite, and the
      per-cohort `tv*.R` scripts).
-- **External validation cohorts:** ADNI, the A4 secondary-prevention trial
-  (pTau217 + CDR progression), a pooled five-cohort PET analysis (OASIS, NACC, HABS,
-  ADNI, AIBL), and NACC cerebrospinal-fluid (CSF) biomarkers.
+- **Cohorts:** ADNI, the A4 secondary-prevention trial (pTau217 + Clinical Dementia Rating
+  progression), a pooled five-cohort PET analysis (OASIS, NACC, HABS, ADNI, AIBL),
+  NACC cerebrospinal-fluid (CSF) biomarkers, and UK Biobank for proteomics, multi-modal
+  brain imaging, and cognitive tests.
 - **Post-hoc / robustness analyses:** subgroup **heterogeneity** (DerSimonian–Laird),
   **variance-inflation-factor (VIF)** multicollinearity diagnostics, **Brier-score
   decomposition** (reliability / resolution / uncertainty), **net reclassification
