@@ -21,7 +21,7 @@ import seaborn as sns
 from sklearn.metrics import roc_auc_score
 
 
-REPO_ROOT = Path(__file__).resolve().parents[2]
+REPO_ROOT = Path(__file__).resolve().parents[1]
 
 DEFAULT_EXPERIMENTS = (
     "demographics_and_lancet2024",

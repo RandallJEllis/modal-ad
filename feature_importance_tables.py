@@ -1,8 +1,8 @@
 # import ukb_utils
 
 import sys
-sys.path.append("..")
-from ukb_func import plot_results
+sys.path.append("./ukb_func")
+import plot_results
 import matplotlib.pyplot as plt
 
 import numpy as np
@@ -14,7 +14,7 @@ plt.rcParams.update(
 )
 
 protein_code = pd.read_csv(
-    "../../../proj_idp/tidy_data/proteomics/coding143.tsv", sep="\t"
+    "../../proj_idp/tidy_data/proteomics/coding143.tsv", sep="\t"
 )
 # Split the column by semicolon and expand into separate columns
 split_columns = protein_code["meaning"].str.split(";", expand=True)
@@ -130,7 +130,7 @@ for outcome in ["alzheimers", "dementia"]:
     for modality in ["proteomics", "neuroimaging", "cognitive_tests"]:
         for model in ["lgbm", "lrl1"]:
             # proteomics
-            modality_path = f"../../results/UKBiobank/{outcome}/{modality}"
+            modality_path = f"../results/UKBiobank/{outcome}/{modality}"
             main_path = (
                 f"{modality_path}/demographics_modality_lancet2024/log_loss/{model}/"
             )

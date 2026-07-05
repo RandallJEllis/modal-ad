@@ -25,11 +25,11 @@ from sklearn.metrics import roc_auc_score
 from sklearn.model_selection import StratifiedKFold
 
 
-REPO_ROOT = Path(__file__).resolve().parents[2]
-sys.path.insert(0, str(REPO_ROOT.parent))
+REPO_ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(Path(__file__).resolve().parent / "ukb_func"))
 
-import rfb.code.ukb_func.dementia_utils as dementia_utils
-import rfb.code.ukb_func.ukb_utils as ukb_utils
+import dementia_utils
+import ukb_utils
 
 
 DEFAULT_MODALITIES = ("proteomics", "neuroimaging", "cognitive_tests")

@@ -10,7 +10,7 @@ from docx.oxml.ns import qn
 from docx.shared import Inches, Pt, RGBColor
 
 
-BASE = Path("/Users/randalljellis/sshfs_mount/rfb")
+BASE = Path(__file__).resolve().parents[1]
 OUT_DIR = BASE / "results" / "vif_review_tables"
 
 

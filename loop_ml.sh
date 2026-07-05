@@ -1,10 +1,30 @@
 #!/bin/bash
 
+# Define the strings for modality and predict_alzheimers_only
+# These are passed as arguments to the script
+# e.g. ./loop_ml.sh proteomics 0
+# This will run the script for the proteomics modality with no age cutoff
+# and predict_alzheimers_only set to 0
+# The script will then loop over the experiments and metrics
+# and run the script for each combination
+
+# Define the strings for experiment and metric
+# These are passed as arguments to the script
+# options for modality are:
+# "proteomics" "neuroimaging" "cognitive_tests"
+# options for predict_alzheimers_only are:
+# "0" "1"
+# options for experiment are:
+# "fs_modality_only" "fs_demographics_and_modality" "fs_demographics_modality_lancet2024"
+# "age_only" "age_sex_lancet2024" "all_demographics" "demographics_and_lancet2024"
+# "modality_only" "demographics_and_modality" "demographics_modality_lancet2024"
+
 modality=$1
 predict_alzheimers_only=$2
 
 # Define the strings for experiment and metric
-experiments=("fs_modality_only" "fs_demographics_and_modality" "fs_demographics_modality_lancet2024")
+experiments=("age_sex_lancet2024")
+# "fs_modality_only" "fs_demographics_and_modality" "fs_demographics_modality_lancet2024" )
 
 # "age_only" "age_sex_lancet2024" "all_demographics" "demographics_and_lancet2024"
 # "modality_only" "demographics_and_modality" "demographics_modality_lancet2024"
@@ -12,9 +32,10 @@ experiments=("fs_modality_only" "fs_demographics_and_modality" "fs_demographics_
 
 # metrics=("roc_auc" "f3" "ap")
 metrics=("log_loss")
-# ("lrl1" "lgbm")
-models=("lrl1" "lgbm")
-age_cutoffs=(0 65)
+# ("lrl1" "lgbm" "tabfm")
+models=("lrl1")
+# "lgbm")
+age_cutoffs=(65)
 # age_cutoffs=(0 65)
 
 # Nested loops to iterate over the strings
@@ -94,7 +115,7 @@ for experiment in "${experiments[@]}"; do
 
                         else
                             partition="short"
-                            time="0:30:00"
+                            time="1:00:00"
                             mem="16G"
                         fi 
                     

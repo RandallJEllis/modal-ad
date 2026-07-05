@@ -72,12 +72,12 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument(
         "--data-root",
-        default="../../tidy_data/UKBiobank/dementia",
+        default="../tidy_data/UKBiobank/dementia",
         help="Path to tidy_data/UKBiobank/dementia, relative to this script.",
     )
     parser.add_argument(
         "--output-dir",
-        default="../../results/UKBiobank/vif_diagnostics/demographics_modality_lancet2024",
+        default="../results/UKBiobank/vif_diagnostics/demographics_modality_lancet2024",
         help="Output directory, relative to this script.",
     )
     parser.add_argument(
@@ -88,7 +88,7 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument(
         "--acd-path",
-        default="../../../proj_idp/tidy_data/acd/allcausedementia.parquet",
+        default="../../proj_idp/tidy_data/acd/allcausedementia.parquet",
         help="All-cause dementia source file used to identify Alzheimer disease cases.",
     )
     parser.add_argument(
