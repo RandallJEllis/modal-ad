@@ -1,12 +1,37 @@
-# bash output files
+# --- HPC / SLURM output ---
 *.out
 *.err
+
+# --- SSH keys accidentally colocated with code ---
 rfb
 rfb.pub
+
+# --- Notebooks ---
 *.ipynb
+.ipynb_checkpoints/
+
+# --- Data & large model artifacts (keep raw/derived data out of git) ---
 *.csv
+*.parquet
+*.npy
+*.pkl
+*.pickle
 *catboost*
+autogluon_models/
+
+# --- Python ---
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+
+# --- R ---
+.Rhistory
+.RData
+.Rapp.history
+
+# --- OS / editor cruft ---
 *DS_Store*
 ._*
-*.ipynb
-**.ipynb
+.vscode/

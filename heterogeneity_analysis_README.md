@@ -45,13 +45,13 @@ writing potentially misaligned subgroup results.
 Default run:
 
 ```bash
-python3 code/ukbiobank/heterogeneity_analysis.py
+python3 heterogeneity_analysis.py
 ```
 
 Run with five-year age bands:
 
 ```bash
-python3 code/ukbiobank/heterogeneity_analysis.py --age-bins 65 70 75 80 85
+python3 heterogeneity_analysis.py --age-bins 65 70 75 80 85
 ```
 
 The age-bin cutpoints are lower bounds. For example, `--age-bins 65 70 75 80 85`

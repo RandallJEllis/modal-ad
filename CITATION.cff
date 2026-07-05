@@ -1,0 +1,21 @@
+# Citation metadata for this repository (https://citation-file-format.github.io/).
+# TODO: fill in the placeholders once the associated paper is published.
+cff-version: 1.2.0
+message: "If you use this software, please cite both the software and the associated paper."
+title: "Multimodal Prediction of Dementia and Alzheimer's Disease"
+type: software
+authors:
+  - family-names: Ellis
+    given-names: Randall J.
+    orcid: "https://orcid.org/0000-0000-0000-0000"   # TODO
+repository-code: "https://github.com/RandallJEllis/modal-ad"
+license: TODO          # e.g. MIT — must match the LICENSE file once added
+preferred-citation:
+  type: article
+  title: "TODO — paper title"
+  authors:
+    - family-names: Ellis
+      given-names: Randall J.
+  journal: "TODO"
+  year: TODO
+  doi: "TODO"
