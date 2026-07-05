@@ -241,9 +241,10 @@ If you use this code, please cite the associated paper (see [`CITATION.cff`](CIT
 
 ## 8. License
 
-_No license file is included yet._ A license determines how others may reuse this
-code; add a `LICENSE` file (e.g. MIT or BSD-3-Clause for permissive reuse) before or
-at publication.
+Released under the **MIT License** — see [`LICENSE`](LICENSE). You are free to use,
+modify, and redistribute the code with attribution. Note that this license covers the
+**code only**; the underlying study data remain governed by each provider's data-use
+agreement (see §3).
 
 ## 9. Contact
 
