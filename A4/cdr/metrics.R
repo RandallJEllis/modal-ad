@@ -1,6 +1,4 @@
 library(riskRegression)
-library(tidyverse)
-library(arrow)
 library(nricens)
 library(dcurves)
 
@@ -13,7 +11,6 @@ get_model_labels <- function(model_names) {
     "demographics_no_apoe" = "Demo (-APOE)",
     "lancet" = "Lancet",
     "ptau" = "pTau217",
-    "csf" = "CSF",
     "ptau_demographics" = "pTau217+Demo",
     "ptau_demographics_no_apoe" = "pTau217+Demo (-APOE)",
     "ptau_demographics_lancet_no_apoe" = "pTau217+Demo+Lancet (-APOE)",
@@ -286,9 +283,10 @@ compare_tvaurocs <- function(trocs_x, trocs_y) {
   # Loop through each fold
   for (fold in seq_along(trocs_x)) {
     # Compare timeROC objects using timeROC::compare
-    comparison <- timeROC::compare(trocs_x[[fold]],
+    comparison <- timeROC::compare(
+      trocs_x[[fold]],
       trocs_y[[fold]],
-      adjusted = TRUE
+      # adjusted = TRUE
     )
 
     # Store results for this fold
@@ -298,7 +296,7 @@ compare_tvaurocs <- function(trocs_x, trocs_y) {
       auc_x = trocs_x[[fold]]$AUC,
       auc_y = trocs_y[[fold]]$AUC,
       auc_diff = trocs_y[[fold]]$AUC - trocs_x[[fold]]$AUC,
-      p_value = comparison$p_values_AUC[2, ]
+      p_value = comparison$p_values_AUC # [1, ]
     )
   }
 
@@ -389,9 +387,7 @@ collate_metric <- function(metrics_list, metric = "auc") {
   return(all_results)
 }
 
-calculate_SeSpPPVNPV <- function(model, train_data, val_data, times) {
-  risk_scores <- predict(model, train_data)
-
+find_best_cutpoint <- function(risk_scores, train_data, times) {
   # Find optimal cutpoint using Youden's index
   se_sp_ppv_npv <- list()
   for (cutpoint in seq(min(risk_scores), max(risk_scores), length.out = 50)) {
@@ -417,6 +413,13 @@ calculate_SeSpPPVNPV <- function(model, train_data, val_data, times) {
   print(paste0("Best cutpoint: ", best_cutpoint))
   best_cutpoint <- as.numeric(str_extract(best_cutpoint, "\\d+\\.\\d+"))
 
+  return(best_cutpoint)
+}
+
+calculate_SeSpPPVNPV <- function(model, train_data, val_data, times) {
+  risk_scores <- predict(model, train_data)
+  best_cutpoint <- find_best_cutpoint(risk_scores, train_data, times)
+
   # Calculate metrics for validation set
   risk_scores_val <- predict(model, val_data)
   se_sp_ppv_npv_results_val <- SeSpPPVNPV(
@@ -433,11 +436,12 @@ calculate_SeSpPPVNPV <- function(model, train_data, val_data, times) {
 }
 
 
-SeSpPPVNPV_summary <- function(models_list, model_names, eval_times, train_df_l, val_df_l) {
+SeSpPPVNPV_summary <- function(models_list, model_names, train_df_l, val_df_l, eval_times = NULL) {
   metrics_over_time <- list()
 
   # Calculate metrics for each model and fold
   for (model_name in model_names) {
+    print(paste0("Calculating SeSpPPVNPV for ", model_name))
     metrics_over_time[[model_name]] <- list()
     for (fold in 1:5) {
       model <- models_list[[model_name]][[paste0("fold_", fold)]]
@@ -489,10 +493,8 @@ print_model_stats <- function(models_list, var_string, return_table = FALSE) {
 
   # iterate over models that have ptau in them
   for (model_name in names(models_list)) {
-    print(paste0("Model: ", model_name))
     if (grepl(var_string, model_name)) {
       for (fold in 1:5) {
-        print(paste0("Fold: ", fold))
         model <- models_list[[model_name]][[paste0("fold_", fold)]]
         coefs[[model_name]][[paste0("fold_", fold)]] <-
           exp(model$coefficients[var_string])
@@ -720,15 +722,18 @@ print_auc_latex_table <- function(auc_summary) {
       names_glue = "{ifelse(is.na(.name), 'model', paste0(.name, 'y'))}"
     )
 
-  # map model names to labels
+  # get model labels
   model_labels <- get_model_labels(wide_auc_summary$model)
 
   # clean up model names
   wide_auc_summary$model <- model_labels[wide_auc_summary$model]
 
-  # reorder rows of wide_auc_summary in ascending order of time
+  # reorder rows of wide_auc_summary in ascending order of 3y auc, then 4y auc, then 5y auc, then 6y auc, then 7y auc
   wide_auc_summary <- wide_auc_summary %>%
-    arrange(across(matches("\\d+y"), ~.x))
+    arrange(
+      wide_auc_summary$`3y`, wide_auc_summary$`4y`, wide_auc_summary$`5y`,
+      wide_auc_summary$`6y`, wide_auc_summary$`7y`
+    )
   # print with 4 decimal places
   print(wide_auc_summary)
 
@@ -738,8 +743,8 @@ print_auc_latex_table <- function(auc_summary) {
 }
 
 
-range_sespppvnnv <- function(model1, model2, main_path) {
-  df_sespppvnpv <- read_parquet(paste0(main_path, "sespppvnpv_summary.parquet"))
+range_sespppvnnv <- function(model1, model2) {
+  df_sespppvnpv <- read_parquet(paste0(main_path, "spspppvnpv_summary.parquet"))
 
   # calculate differences between ptau+demo+lancet and demographics+lancet at each time point for each metric
   difference_dfs <- data.frame()
