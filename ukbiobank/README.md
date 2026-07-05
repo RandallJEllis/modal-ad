@@ -1,15 +1,15 @@
 # `ukbiobank/` — UK Biobank primary pipeline
 
-The main modeling cohort. Contains the two core experiment drivers and the
-modality-specific dataset builders.
+The main modeling cohort. Contains the core experiment driver and the
+modality-specific dataset builders. UK Biobank prediction is **cross-sectional
+classification only** — time-to-event modeling is done for the external cohorts (see
+[`../cohorts/`](../cohorts/)), not here.
 
 ### Core scripts
 | Script | Purpose |
 | --- | --- |
 | `ml_experiments.py` | Cross-sectional AutoML classifier (one model per modality × experiment × metric × model × age-cutoff × region). |
 | `sh_ml_experiments.sh`, `loop_ml.sh` | SLURM wrapper and full-grid submitter for `ml_experiments.py`. |
-| `timetoevent_experiments.py` | Survival / time-to-event AutoML variant (random survival forests + AutoML). |
-| `sh_timetoevent_experiments.sh`, `loop_timetoevent.sh` | SLURM wrapper and submitter for the survival variant. |
 
 ### Data-modality subfolders
 | Folder | Modality |
