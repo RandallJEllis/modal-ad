@@ -7,7 +7,7 @@ setwd({
   if (length(file_arg) == 0) getwd() else dirname(normalizePath(sub("^--file=", "", file_arg[[1]]), mustWork = TRUE))
 })
 
-source("../vif_utils.R")
+source("../../analysis/vif_utils.R")
 
 model_name <- "ptau_demographics_lancet"
 outcomes <- c("allcausedementia_outcome", "alzheimers_outcome")

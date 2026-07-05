@@ -69,7 +69,7 @@ The code is organized by role into six top-level directories:
 ├── cohorts/             ← external validation cohorts
 │   ├── A4/                          (A4 trial: pTau217, CDR progression, joint models)
 │   │   └── cdr/                     (CDR-based time-to-event sub-analysis)
-│   ├── ADNI/  pet/  csf/  nacc_csf/
+│   ├── ADNI/  pet/  nacc_csf/
 │
 ├── survival/            ← shared survival-analysis R utilities
 │   └── time2event/                 (metrics.R, plotting, publication figures)
@@ -178,7 +178,7 @@ writes `X.parquet` / `y.npy` plus cross-validation indices.
 python ukbiobank/proteomics/build_ml_datasets.py      --data_path <...> --output_path <...>
 python ukbiobank/neuroimaging/build_ml_datasets.py    --data_path <...> --output_path <...>
 python ukbiobank/cognitive_tests/build_ml_datasets.py --data_path <...> --output_path <...>
-python cohorts/A4/build_datasets.py                   # + cohorts/{ADNI,pet,csf}/ builds
+python cohorts/A4/build_datasets.py                   # + cohorts/{ADNI,pet,nacc_csf}/ builds
 ```
 
 ### Stage 2 — Cross-sectional prediction (UK Biobank)
@@ -209,7 +209,7 @@ Outputs (probabilities, labels, per-region metrics) are written under
 
 `ukbiobank/timetoevent_experiments.py` mirrors Stage 2 for survival outcomes (random
 survival forests + AutoML). The cohort-specific R scripts (`cohorts/A4/`,
-`cohorts/ADNI/`, `cohorts/pet/`, `cohorts/csf/`, `survival/time2event/`) fit Cox,
+`cohorts/ADNI/`, `cohorts/pet/`, `cohorts/nacc_csf/`, `survival/time2event/`) fit Cox,
 time-varying-covariate, and joint models and produce the publication survival figures
 and metrics (including Brier decomposition, NRI, and decision curves via
 `survival/time2event/metrics.R`).

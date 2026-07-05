@@ -15,8 +15,8 @@ library(metafor)
 
 setwd(dirname(this.path()))
 
-source("../time2event/plot_figures.R")
-source("../time2event/metrics.R")
+source("../../survival/time2event/plot_figures.R")
+source("../../survival/time2event/metrics.R")
 
 base_path <- "../../pet_all_cohorts/tidy_data/"
 
