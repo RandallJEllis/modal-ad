@@ -1,9 +1,11 @@
-# `ukb_func/` — shared Python library
+# `utils/` — shared project library
 
-Utility modules imported across the codebase. Scripts add this folder to the import
-path (`sys.path.append("./ukb_func")` from the repo root, or `"../ukb_func"` from a
-subfolder) and then `import <module>` directly. There is no `__init__.py`; modules are
-imported by name, not as a package.
+Utility modules imported across the whole codebase (UK Biobank pipeline, external
+cohorts, and robustness analyses). Consuming scripts locate this folder automatically —
+each walks up the directory tree to find `utils/` and adds it to the import path — then
+`import <module>` directly. There is no `__init__.py`; modules are imported by name,
+not as a package. It lives at the repository root because it is shared, not
+UKB-specific.
 
 | Module | Purpose |
 | --- | --- |

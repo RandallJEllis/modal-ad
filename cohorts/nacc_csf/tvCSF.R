@@ -15,8 +15,8 @@ library(mice)
 setwd(dirname(this.path()))
 options(pillar.width = Inf)
 
-source("../time2event/plot_figures.R")
-source("../time2event/metrics.R")
+source("../../survival/time2event/plot_figures.R")
+source("../../survival/time2event/metrics.R")
 
 # cut_time_data <- function(td_data, interval_years = 1.7) {
 #   # Create sequence of timepoints for each ID

@@ -8,8 +8,7 @@ time-to-event (survival) analysis.
 | [`A4/`](A4/) | Anti-Amyloid Treatment in Asymptomatic AD (A4) trial — plasma pTau217 and CDR progression; Cox, time-varying, and joint models. |
 | [`ADNI/`](ADNI/) | Alzheimer's Disease Neuroimaging Initiative — plasma pTau. |
 | [`pet/`](pet/) | Pooled amyloid-PET across OASIS, NACC, HABS, ADNI, AIBL. |
-| [`csf/`](csf/) | NACC cerebrospinal-fluid biomarkers. |
-| [`nacc_csf/`](nacc_csf/) | VIF multicollinearity diagnostics for the NACC CSF models. |
+| [`nacc_csf/`](nacc_csf/) | NACC cerebrospinal-fluid biomarkers — datasets, survival models, and VIF diagnostics. |
 
 Shared survival-metric utilities live in [`../survival/time2event/`](../survival/time2event/).
 See the root [`README.md`](../README.md).
