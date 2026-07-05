@@ -44,55 +44,50 @@ those predictions behave across clinically relevant subgroups.
 
 ## 2. Repository structure
 
+The code is organized by role into six top-level directories:
+
 ```text
 .
-├── README.md                     ← this file
-├── CITATION.cff                  ← how to cite (fill in once published)
-├── requirements.txt              ← core Python dependencies (pip)
-├── environment.yml               ← conda environment (Python)
-├── ukb_func/                     ← shared Python library (imported everywhere)
+├── README.md  LICENSE  CITATION.cff  requirements.txt  environment.yml  .gitignore
+│
+├── ukb_func/            ← shared Python library, imported everywhere
 │   ├── README.md
-│   ├── requirements.txt          ← full frozen conda spec (linux-64)
-│   └── *.py                       (ml_utils, dementia_utils, ukb_utils, df_utils, …)
+│   ├── requirements.txt  ← full frozen conda spec (linux-64)
+│   └── *.py               (ml_utils, dementia_utils, ukb_utils, df_utils, …)
 │
-│   ── UK Biobank main pipeline (repo root) ──
-├── ml_experiments.py             ← cross-sectional AutoML classifier (core script)
-├── sh_ml_experiments.sh          ← SLURM sbatch wrapper for one ml_experiments run
-├── loop_ml.sh                    ← submits the full grid of ml_experiments jobs
-├── timetoevent_experiments.py    ← survival/time-to-event AutoML variant
-├── sh_timetoevent_experiments.sh
-├── loop_timetoevent.sh
+├── ukbiobank/           ← UK Biobank primary pipeline
+│   ├── ml_experiments.py           ← cross-sectional AutoML classifier (core script)
+│   ├── sh_ml_experiments.sh        ← SLURM sbatch wrapper for one run
+│   ├── loop_ml.sh                  ← submits the full grid of jobs
+│   ├── timetoevent_experiments.py  ← survival/time-to-event AutoML variant
+│   ├── sh_timetoevent_experiments.sh  loop_timetoevent.sh
+│   ├── proteomics/                 ← build_ml_datasets.py + experiments + figures
+│   ├── neuroimaging/               ← build_ml_datasets.py (brain IDPs)
+│   ├── cognitive_tests/            ← build_ml_datasets.py
+│   └── lancet_2024_variables/      ← 2024 Lancet Commission risk factors
 │
-│   ── UK Biobank data modalities ──
-├── proteomics/                   ← build_ml_datasets.py + experiment scripts + figures
-├── neuroimaging/                 ← build_ml_datasets.py (brain IDPs)
-├── cognitive_tests/              ← build_ml_datasets.py
-├── lancet_2024_variables/        ← extract 2024 Lancet Commission risk factors
+├── cohorts/             ← external validation cohorts
+│   ├── A4/                          (A4 trial: pTau217, CDR progression, joint models)
+│   │   └── cdr/                     (CDR-based time-to-event sub-analysis)
+│   ├── ADNI/  pet/  csf/  nacc_csf/
 │
-│   ── External validation cohorts ──
-├── ADNI/                         ← ADNI build + survival + plots
-├── A4/                           ← A4 trial: pTau217, CDR progression, joint models
-│   └── cdr/                       (CDR-based time-to-event sub-analysis)
-├── pet/                          ← pooled PET amyloid across 5 cohorts
-├── csf/                          ← NACC CSF biomarker datasets + survival
-├── nacc_csf/                     ← NACC CSF VIF diagnostics
+├── survival/            ← shared survival-analysis R utilities
+│   └── time2event/                 (metrics.R, plotting, publication figures)
 │
-│   ── Survival analysis (shared R) ──
-├── time2event/                   ← metrics.R, plotting, publication figures
+├── analysis/            ← feature importance & robustness checks
+│   ├── feature_importance/         ← retrain best models, extract importances
+│   ├── feature_importance_tables.py
+│   ├── heterogeneity_analysis.py   ← subgroup heterogeneity (see docs/)
+│   ├── plot_heterogeneity_comparison.py
+│   ├── vif_maximal_models.py        vif_utils.R  make_vif_reviewer_tables.py
 │
-│   ── Feature importance & robustness ──
-├── feature_importance/           ← retrain best models and extract importances
-├── feature_importance_tables.py  ← assemble importance tables/figures
-├── heterogeneity_analysis.py     ← subgroup heterogeneity (see its README)
-├── heterogeneity_analysis_README.md
-├── plot_heterogeneity_comparison.py
-├── vif_maximal_models.py         ← VIF for the ML feature matrix
-├── vif_utils.R                   ← shared VIF helpers (Cox models)
-└── make_vif_reviewer_tables.py   ← formats VIF results into Word tables
+└── docs/                ← extended documentation (e.g. heterogeneity_analysis.md)
 ```
 
-Most directories contain their own `README.md` with details; start there for any
-specific analysis.
+Every top-level directory (and most subdirectories) contains its own `README.md`;
+start there for any specific analysis. `ukb_func/` stays at the repository root so that
+every script can locate it; scripts add it to the import path by walking up to find it,
+so they can be launched from any working directory.
 
 ---
 
@@ -167,6 +162,12 @@ install.packages(c(
 
 The pipeline runs in four stages. Steps 2–4 are independent given the built datasets.
 
+> **Running scripts.** `ukb_func` is located automatically (scripts walk up the tree to
+> find it), so imports work from any working directory. The **data** directory paths in
+> the build/analysis scripts (`tidy_data/`, `results/`, `raw_data/`, `proj_idp/`, …) are
+> environment-specific and are set per script — adjust them (or the exposed CLI
+> arguments) to your local data layout, as noted in §3.
+
 ### Stage 1 — Build model-ready datasets
 
 Each modality/cohort has a build script that merges the modality measurements with
@@ -174,10 +175,10 @@ demographics and dementia labels, removes prevalent cases, encodes categoricals,
 writes `X.parquet` / `y.npy` plus cross-validation indices.
 
 ```bash
-python proteomics/build_ml_datasets.py       --data_path <...> --output_path <...>
-python neuroimaging/build_ml_datasets.py      --data_path <...> --output_path <...>
-python cognitive_tests/build_ml_datasets.py   --data_path <...> --output_path <...>
-python A4/build_datasets.py                    # + ADNI/, pet/, csf/ build scripts
+python ukbiobank/proteomics/build_ml_datasets.py      --data_path <...> --output_path <...>
+python ukbiobank/neuroimaging/build_ml_datasets.py    --data_path <...> --output_path <...>
+python ukbiobank/cognitive_tests/build_ml_datasets.py --data_path <...> --output_path <...>
+python cohorts/A4/build_datasets.py                   # + cohorts/{ADNI,pet,csf}/ builds
 ```
 
 ### Stage 2 — Cross-sectional prediction (UK Biobank)
@@ -186,7 +187,7 @@ python A4/build_datasets.py                    # + ADNI/, pet/, csf/ build scrip
 age cutoff, region) combination. `loop_ml.sh` submits the full grid via SLURM.
 
 ```bash
-python ml_experiments.py \
+python ukbiobank/ml_experiments.py \
   --modality proteomics \
   --experiment demographics_modality_lancet2024 \
   --model lgbm --metric log_loss --age_cutoff 65 --region_index 0
@@ -206,23 +207,24 @@ Outputs (probabilities, labels, per-region metrics) are written under
 
 ### Stage 3 — Time-to-event / survival
 
-`timetoevent_experiments.py` mirrors Stage 2 for survival outcomes (random survival
-forests + AutoML). The cohort-specific R scripts (`A4/`, `ADNI/`, `pet/`, `csf/`,
-`time2event/`) fit Cox, time-varying-covariate, and joint models and produce the
-publication survival figures and metrics (including Brier decomposition, NRI, and
-decision curves via `time2event/metrics.R`).
+`ukbiobank/timetoevent_experiments.py` mirrors Stage 2 for survival outcomes (random
+survival forests + AutoML). The cohort-specific R scripts (`cohorts/A4/`,
+`cohorts/ADNI/`, `cohorts/pet/`, `cohorts/csf/`, `survival/time2event/`) fit Cox,
+time-varying-covariate, and joint models and produce the publication survival figures
+and metrics (including Brier decomposition, NRI, and decision curves via
+`survival/time2event/metrics.R`).
 
 ### Stage 4 — Feature importance and robustness
 
 ```bash
-bash feature_importance/loop_fi.sh          # retrain best models, extract importances
-python feature_importance_tables.py         # assemble importance tables/figures
-python heterogeneity_analysis.py            # subgroup heterogeneity (see its README)
-python vif_maximal_models.py                # VIF diagnostics for the ML feature matrix
+bash   analysis/feature_importance/loop_fi.sh   # retrain best models, extract importances
+python analysis/feature_importance_tables.py     # assemble importance tables/figures
+python analysis/heterogeneity_analysis.py        # subgroup heterogeneity (see docs/)
+python analysis/vif_maximal_models.py            # VIF diagnostics for the ML feature matrix
 ```
 
-See [`heterogeneity_analysis_README.md`](heterogeneity_analysis_README.md) for the
-full heterogeneity workflow and output schema.
+See [`docs/heterogeneity_analysis.md`](docs/heterogeneity_analysis.md) for the full
+heterogeneity workflow and output schema.
 
 ---
 
@@ -241,9 +243,10 @@ If you use this code, please cite the associated paper (see [`CITATION.cff`](CIT
 
 ## 8. License
 
-_No license file is included yet._ A license determines how others may reuse this
-code; add a `LICENSE` file (e.g. MIT or BSD-3-Clause for permissive reuse) before or
-at publication.
+Released under the **MIT License** — see [`LICENSE`](LICENSE). You are free to use,
+modify, and redistribute the code with attribution. Note that this license covers the
+**code only**; the underlying study data remain governed by each provider's data-use
+agreement (see §3).
 
 ## 9. Contact
 

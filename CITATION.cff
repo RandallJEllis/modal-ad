@@ -9,7 +9,7 @@ authors:
     given-names: Randall J.
     orcid: "https://orcid.org/0000-0000-0000-0000"   # TODO
 repository-code: "https://github.com/RandallJEllis/modal-ad"
-license: TODO          # e.g. MIT — must match the LICENSE file once added
+license: MIT
 preferred-citation:
   type: article
   title: "TODO — paper title"
