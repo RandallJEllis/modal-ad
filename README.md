@@ -1,0 +1,246 @@
+# Multimodal Prediction of Dementia and Alzheimer's Disease
+
+Code accompanying the study of machine-learning prediction of incident dementia and
+Alzheimer's disease (AD) from multiple data modalities in the **A4**, **ADNI**, 
+multi-cohort **PET**, **NACC CSF**, and **UK Biobank** cohorts.
+
+> **Associated publication.** _Add full citation, journal, year, and DOI here once
+> the paper is published_ (see [`CITATION.cff`](CITATION.cff)). Please cite the paper
+> if you use this code.
+
+---
+
+## 1. Overview
+
+The project asks how well incident Alzheimer's (and, as a secondary outcome, 
+all-cause dementia) can be predicted from different classes of measurement, and how
+those predictions behave across clinically relevant subgroups.
+
+- **Data modalities:** blood biomarkers, amyloid PET, cerebrospinal fluid markers,
+  proteomics, neuroimaging (brain IDPs), and
+  cognitive tests, each combined with demographics, APOE genotype, and the modifiable risk
+  factors from the 2024 Lancet Commission on dementia.
+- **Models:** Cox survival models, gradient-boosted trees (**LightGBM**) and
+  **L1-regularized logistic regression**, tuned with the
+  [FLAML](https://microsoft.github.io/FLAML/) AutoML framework. Discrimination is optimized
+  on log loss.
+- **Two prediction framings, applied to different cohorts:**
+  1. **Cross-sectional classification** (UK Biobank) — predict whether a participant
+     will be diagnosed within the follow-up window (`ml_experiments.py`).
+  2. **Time-to-event / survival analysis** (external cohorts) — model time to diagnosis
+     with Cox proportional-hazards, time-varying-covariate, and joint
+     longitudinal-survival models (the `survival/time2event/` R suite and the
+     per-cohort `tv*.R` scripts). *Not applied to UK Biobank.*
+- **Cohorts:** ADNI, the A4 secondary-prevention trial (pTau217 + Clinical Dementia Rating
+  progression), a pooled five-cohort PET analysis (OASIS, NACC, HABS, ADNI, AIBL),
+  NACC cerebrospinal-fluid (CSF) biomarkers, and UK Biobank for proteomics, multi-modal
+  brain imaging, and cognitive tests.
+- **Post-hoc / robustness analyses:** subgroup **heterogeneity** (DerSimonian–Laird),
+  **variance-inflation-factor (VIF)** multicollinearity diagnostics, **Brier-score
+  decomposition** (reliability / resolution / uncertainty), **net reclassification
+  improvement (NRI)**, and **decision-curve analysis**.
+
+---
+
+## 2. Repository structure
+
+The code is organized by role into six top-level directories:
+
+```text
+.
+├── README.md  LICENSE  CITATION.cff  requirements.txt  environment.yml  .gitignore
+│
+├── utils/               ← shared project library, imported everywhere
+│   ├── README.md
+│   └── *.py               (ml_utils, dementia_utils, ukb_utils, df_utils, …)
+│
+├── ukbiobank/           ← UK Biobank primary pipeline
+│   ├── ml_experiments.py           ← cross-sectional AutoML classifier (core script)
+│   ├── sh_ml_experiments.sh        ← SLURM sbatch wrapper for one run
+│   ├── loop_ml.sh                  ← submits the full grid of jobs
+│   ├── proteomics/                 ← proteomics dataset builder
+│   ├── neuroimaging/               ← build_ml_datasets.py (brain IDPs)
+│   ├── cognitive_tests/            ← build_ml_datasets.py
+│   └── lancet_2024_variables/      ← 2024 Lancet Commission risk factors
+│
+├── cohorts/             ← external validation cohorts
+│   ├── A4/                          (A4 trial: pTau217, CDR progression, joint models)
+│   │   └── cdr/                     (CDR-based time-to-event sub-analysis)
+│   ├── ADNI/  pet/  nacc_csf/
+│
+├── survival/            ← shared survival-analysis R utilities
+│   └── time2event/                 (metrics.R, plotting, publication figures)
+│
+├── analysis/            ← feature importance & robustness checks
+│   ├── feature_importance_tables.py
+│   ├── heterogeneity_analysis.py   ← subgroup heterogeneity (see docs/)
+│   ├── plot_heterogeneity_comparison.py
+│   ├── vif_maximal_models.py        vif_utils.R  make_vif_reviewer_tables.py
+│
+└── docs/                ← extended documentation (e.g. heterogeneity_analysis.md)
+```
+
+Every top-level directory (and most subdirectories) contains its own `README.md`;
+start there for any specific analysis. `utils/` stays at the repository root so that
+every script can locate it; scripts add it to the import path by walking up to find it,
+so they can be launched from any working directory.
+
+---
+
+## 3. Data access
+
+The raw and derived data are **not** included in this repository and must be obtained
+from the respective data providers under their access agreements:
+
+| Source | Access |
+| --- | --- |
+| UK Biobank | Approved application via <https://www.ukbiobank.ac.uk/> |
+| ADNI | <https://adni.loni.usc.edu/> |
+| A4 | <https://www.a4studydata.org/> |
+| OASIS / NACC / HABS / AIBL (PET) | Respective data-use agreements |
+
+### Expected data layout
+
+Scripts reference data through **relative paths anchored near the repository**, using
+directories such as `tidy_data/`, `results/`, `metadata/`, and an adjacent
+`proj_idp/`. The conventional layout places these as siblings of the code checkout:
+
+```text
+<workspace>/
+├── modal-ad/            ← this repository
+├── tidy_data/           ← model-ready datasets (X.parquet, y.npy, …)
+├── results/             ← model outputs (probabilities, metrics, figures)
+├── metadata/            ← UKB field lookups (e.g. coding10.tsv)
+└── proj_idp/            ← upstream tidy_data source (e.g. allcausedementia.parquet)
+```
+
+> ⚠️ **Path caveat.** These scripts were developed across several HPC environments,
+> and some relative paths / data-subfolder names (e.g. `tidy_data/dementia` vs
+> `tidy_data/UKBiobank/dementia`) are inconsistent between scripts. Before running,
+> verify the `--data_path` / `--output_path` / root arguments against your local
+> layout. Where possible, paths are exposed as command-line arguments.
+
+---
+
+## 4. Environment setup
+
+### Python
+
+```bash
+# Option A — conda (recommended)
+conda env create -f environment.yml
+conda activate modal-ad
+
+# Option B — pip
+pip install -r requirements.txt
+```
+
+Core Python stack: `scikit-learn`, `pandas`, `numpy`, `flaml`, `lightgbm`,
+`scikit-survival`, `lifelines`, `pyarrow`, `matplotlib`, `seaborn`, `scipy`, and
+`python-docx`.
+
+### R (survival analysis and figures)
+
+The `*.R` scripts require R (≥ 4.2). Key packages:
+
+```r
+install.packages(c(
+  "tidyverse", "survival", "survminer", "riskRegression", "pec", "timeROC",
+  "pROC", "yardstick", "nricens", "rmda", "JMbayes2", "mice", "nlme",
+  "arrow", "ggplot2", "patchwork", "cowplot", "xtable", "this.path"
+))
+```
+
+---
+
+## 5. How to reproduce the analyses
+
+The pipeline runs in four stages. Steps 2–4 are independent given the built datasets.
+
+> **Running scripts.** `utils` is located automatically (scripts walk up the tree to
+> find it), so imports work from any working directory. The **data** directory paths in
+> the build/analysis scripts (`tidy_data/`, `results/`, `raw_data/`, `proj_idp/`, …) are
+> environment-specific and are set per script — adjust them (or the exposed CLI
+> arguments) to your local data layout, as noted in §3.
+
+### Stage 1 — Build model-ready datasets
+
+Each modality/cohort has a build script that merges the modality measurements with
+demographics and dementia labels, removes prevalent cases, encodes categoricals, and
+writes `X.parquet` / `y.npy` plus cross-validation indices.
+
+```bash
+python ukbiobank/proteomics/build_ml_datasets.py      --data_path <...> --output_path <...>
+python ukbiobank/neuroimaging/build_ml_datasets.py    --data_path <...> --output_path <...>
+python ukbiobank/cognitive_tests/build_ml_datasets.py --data_path <...> --output_path <...>
+python cohorts/A4/build_datasets.py                   # + cohorts/{ADNI,pet,nacc_csf}/ builds
+```
+
+### Stage 2 — Cross-sectional prediction (UK Biobank)
+
+`ml_experiments.py` trains one model for one (modality, experiment, metric, model,
+age cutoff, region) combination. `loop_ml.sh` submits the full grid via SLURM.
+
+```bash
+python ukbiobank/ml_experiments.py \
+  --modality proteomics \
+  --experiment demographics_modality_lancet2024 \
+  --model lgbm --metric log_loss --age_cutoff 65 --region_index 0
+```
+
+- **modality:** `proteomics`, `neuroimaging`, `cognitive_tests`
+- **experiment:** `age_only`, `all_demographics`, `age_sex_lancet2024`,
+  `demographics_and_lancet2024`, `modality_only`, `demographics_and_modality`,
+  `demographics_modality_lancet2024`, and their `fs_` feature-selection variants
+- **model:** `lgbm`, `lrl1` · **metric:** `log_loss`, `roc_auc`, `f3`, `ap`
+- **age_cutoff:** `0` (all ages) or `65`
+- **region_index:** assessment-centre region hold-out (proteomics/cognitive) or CV
+  fold (neuroimaging)
+
+Outputs (probabilities, labels, per-region metrics) are written under
+`results/UKBiobank/{outcome}/{modality}/{experiment}/{metric}/{model}/{age_cutoff}/`.
+
+### Stage 3 — Time-to-event / survival (external cohorts)
+
+Time-to-event modeling is applied to the **external cohorts only** (not UK Biobank).
+The cohort-specific R scripts (`cohorts/A4/`, `cohorts/ADNI/`, `cohorts/pet/`,
+`cohorts/nacc_csf/`, `survival/time2event/`) fit Cox, time-varying-covariate, and joint
+models and produce the publication survival figures and metrics (including Brier
+decomposition, NRI, and decision curves via `survival/time2event/metrics.R`).
+
+### Stage 4 — Feature importance and robustness
+
+```bash
+python analysis/feature_importance_tables.py     # assemble importances produced by the UK Biobank pipeline
+python analysis/heterogeneity_analysis.py        # subgroup heterogeneity (see docs/)
+python analysis/vif_maximal_models.py            # VIF diagnostics for the ML feature matrix
+```
+
+See [`docs/heterogeneity_analysis.md`](docs/heterogeneity_analysis.md) for the full
+heterogeneity workflow and output schema.
+
+---
+
+## 6. Compute environment
+
+The experiment grids were run on SLURM HPC clusters. The `loop_*.sh` scripts build
+the parameter grid and submit one `sbatch sh_*.sh` job per combination. To run a
+single job locally, call the underlying Python script directly (as in Stage 2) and
+ignore the `sbatch`/SLURM directives.
+
+---
+
+## 7. Citation
+
+If you use this code, please cite the associated paper (see [`CITATION.cff`](CITATION.cff)).
+
+## 8. License
+
+Released under the **MIT License** — see [`LICENSE`](LICENSE). You are free to use,
+modify, and redistribute the code with attribution. Note that this license covers the
+**code only**; the underlying study data remain governed by each provider's data-use
+agreement (see §3).
+
+## 9. Contact
+
+Randall J. Ellis — questions and issues via the repository's GitHub Issues page.
